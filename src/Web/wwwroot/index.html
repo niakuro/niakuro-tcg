@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Shippori+Mincho:wght@700;800&display=swap" rel="stylesheet" />
+<link href="/room.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
 <style>
 :root{
 color-scheme: light dark;
@@ -234,27 +236,17 @@ body{overflow-x:clip}
 .builder-list .bl-row{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px dotted var(--line);padding:3px 0}
 .builder-list .bl-row .btn{min-height:1.9rem;padding:1px 9px}
 .builder-empty{color:var(--ink-soft);font-size:.85rem}
-.title-name-box{max-width:540px;margin:0 0 14px}.title-name-box label{display:block;font-weight:700}.title-name-box input{width:100%;margin-top:6px}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
-<script>
-var PLAYER_NAME="プレイヤー1";
-var ROOM_NAMES=["プレイヤー1","プレイヤー2"];
-var roomConnection=null, roomCode="", roomStarted=false;
-</script>
 </head>
 <body>
 <div class="wrap">
 <div id="titleView">
 <h1 class="game-title">なんかいい感じのTCG（予定）</h1>
 <p class="title-lead">戦線ゲージを押し切る2人対戦カードゲーム。ポイントの繰り越しと「背水の陣」が勝負どころです。構築済みデッキ3種に加えて、全カードから40枚を組むカスタムデッキも作れます。</p>
-<div class="title-name-box"><label>プレイヤー名
-<input id="titlePlayerName" type="text" maxlength="20" autocomplete="nickname" placeholder="名前を入力">
-</label></div>
+<div class="title-name-box"><label for="titlePlayerName">プレイヤー名</label><input id="titlePlayerName" type="text" maxlength="20" autocomplete="nickname" placeholder="名前を入力"></div>
 <nav class="title-menu" aria-label="メインメニュー">
 <button class="btn primary" data-act="nav-setup" data-mode="cpu">CPU対戦<small>コンピュータと1人で対戦する</small></button>
-<button class="btn" data-act="nav-setup" data-mode="2p">2人対戦（パス＆プレイ）<small>同じ端末を渡し合って対戦する</small></button>
-<button class="btn" data-act="nav-room">ブラウザ対戦ルーム<small>ルームを作る、またはルームコードで参加する</small></button>
+<button class="btn" data-act="nav-room">ブラウザ対戦ルーム<small>ルームを作るか、ルーム番号を入力して参加する</small></button>
 <button class="btn" data-act="nav-setup" data-mode="auto">CPU同士の観戦<small>コンピュータ同士の自動対戦を見る</small></button>
 <button class="btn" data-act="nav-builder">デッキ編成<small>全カードから40枚のカスタムデッキを作る</small></button>
 <button class="btn" data-act="nav-docs">ルール・カード一覧<small>ルール、構築済みデッキ、全カードを確認する</small></button>
@@ -263,36 +255,21 @@ var roomConnection=null, roomCode="", roomStarted=false;
 
 <div id="roomView" class="hidden">
 <h2 class="view-title">ブラウザ対戦ルーム</h2>
-<div class="panel" style="max-width:520px">
-<label>デッキ
-<select id="roomDeck">
-<option value="niakuro">にあくろ × ニトグリ</option>
-<option value="muscat">マスカット × ミルキー</option>
-<option value="coconut">ココナッツ × やーヤ</option>
-</select></label>
-<div class="view-actions">
-<button class="btn primary" data-act="room-create">ルームを作る</button>
-</div>
-<hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
-<label>参加するルームコード
-<input id="roomCode" type="text" maxlength="6" placeholder="例：ABC234" style="text-transform:uppercase">
-</label>
-<div class="view-actions"><button class="btn" data-act="room-join">ルームに参加</button></div>
+<section class="panel room-panel">
+<label>使用デッキ <select id="roomDeck"><option value="niakuro">にあくろ×ニトグリ</option><option value="muscat">マスカット×ミルキー</option><option value="coconut">ココナッツ×やーや</option></select></label>
+<div class="view-actions"><button class="btn primary" data-act="room-create">ルームを作成</button></div>
+<hr>
+<label>ルーム番号 <input id="roomCodeInput" type="text" maxlength="6" autocomplete="off" placeholder="6文字の番号" style="text-transform:uppercase"></label>
+<div class="view-actions"><button class="btn teal" data-act="room-join">番号で参加</button><button class="btn ghost" data-act="back-title">タイトルに戻る</button></div>
 <p id="roomStatus" class="setup-note" aria-live="polite"></p>
-<div id="roomLobby" class="hidden">
-<h3 id="roomCodeLabel"></h3>
-<div id="roomPlayers"></div>
-<div class="view-actions"><button class="btn primary" data-act="room-start">対戦開始</button></div>
-</div>
-<button class="btn ghost" data-act="back-title">タイトルに戻る</button>
-</div>
+<div id="roomLobby" class="hidden"><h3 id="roomCodeLabel"></h3><div id="roomPlayers"></div><p class="setup-note">同じルーム番号を相手に共有してください。</p><button class="btn primary" data-act="room-start">対戦開始</button></div>
+</section>
 </div>
 
 <div id="setupView" class="hidden">
 <h2 class="view-title" id="setupTitle">対戦設定</h2>
 <div class="modebar" role="group" aria-label="対戦形式">
 <button class="btn small" id="modeCpu" data-act="setup-mode" data-mode="cpu">CPU戦</button>
-<button class="btn small" id="mode2p" data-act="setup-mode" data-mode="2p">2人対戦（同じ端末）</button>
 <button class="btn small" id="modeAuto" data-act="setup-mode" data-mode="auto">CPU同士（観戦）</button>
 </div>
 <div class="deckbar">
@@ -368,6 +345,7 @@ var roomConnection=null, roomCode="", roomStarted=false;
 <div id="oppZone"></div>
 <div id="promptArea"></div>
 <div class="turnbar" id="turnBar"></div>
+<p class="msg" id="gameStatus" aria-live="polite"></p>
 <div id="myZone"></div>
 </main>
 <aside class="side-panel">
@@ -559,11 +537,9 @@ selected:null, abilityMenu:false, discardMode:false, winner:-1, winReason:"",
 log:[], stats:{plays:{}, attacks:0, haisui:0}, turnCount:[0,0], over:false};
 }
 function pname(p){
-if(typeof S!=="undefined"&&S&&S.mode=== "room") return ROOM_NAMES[p]||("プレイヤー"+(p+1));
-if(typeof S!=="undefined"&&S&&S.mode=== "cpu") return p===0?(PLAYER_NAME||"プレイヤー1"):"CPU";
-if(typeof S!=="undefined"&&S&&S.mode=== "2p") return p===0?(PLAYER_NAME||"プレイヤー1"):(ROOM_NAMES[1]||"プレイヤー2（後攻）");
-if(typeof S!=="undefined"&&S&&S.mode=== "auto") return p===0?"CPU・先攻":"CPU・後攻";
-return p===0?(PLAYER_NAME||"プレイヤー1"):"プレイヤー2";
+if(S.mode==="cpu") return p===0?"あなた":"CPU";
+if(S.mode==="auto") return p===0?"CPU・先攻":"CPU・後攻";
+return p===0?"プレイヤー1（先攻）":"プレイヤー2（後攻）";
 }
 function deckName(p){ return S.players[p].deckDef.name;}
 function deckSub(p){ return S.players[p].deckDef.sub||"";}
@@ -689,8 +665,8 @@ case "deploy": return S.players[by].field.length<FIELD_LIMIT && deployCandidates
 case "deckDeploy": return S.players[by].field.length<FIELD_LIMIT && deckDeployCandidates(by,p.maxCost).length>0;
 case "drawPick": return true;
 case "rich": return!(p.ctx && p.ctx.attackerUid) ||!!findUnitAny(p.ctx.attackerUid);
-case "master": return !!S.masterCtx &&!!findUnitAny(S.masterCtx.sourceUid);
-case "masterCopy": return !!S.masterCtx &&!!findUnitAny(S.masterCtx.sourceUid) && hasMasterCopyTarget(by);
+case "master": return!!S.masterCtx &&!!findUnitAny(S.masterCtx.sourceUid);
+case "masterCopy": return!!S.masterCtx &&!!findUnitAny(S.masterCtx.sourceUid) && hasMasterCopyTarget(by);
 }
 return true;
 }
@@ -899,7 +875,7 @@ finishEndTurn();
 function finishEndTurn(){
 var pl=S.players[S.active];
 pl.carry=Math.floor(pl.avail/2);
-log(S.active,"ターン終了。残り"+pl.avail+"ポイントの半分 "+pl.carry+" が次ターンへ繰越");
+log(S.active,"ターン終了。残り"+pl.avail+"ポイントの半分 "+pl.carry+" が次ターンへ繰り越し");
 pl.avail=0; S.discardMode=false; S.selected=null; S.abilityMenu=false;
 S.active=1-S.active;
 if(S.mode==="2p"){ S.passGate=true; S.passFor="turn"; render(); return;}
@@ -1181,6 +1157,8 @@ refreshAuras(); validatePending();
 afterMasterPick();
 return true;
 }
+
+/* ---------- 超絶自己中にあくろ 起動能力 ---------- */
 function useSuperAbility(choice, u){
 if(!u) u=findUnit(S.active, S.selected);
 if(!u) return;
@@ -1216,7 +1194,7 @@ log(by,"背水の陣：「"+HAISUI_DEFS[action].name+"」を選んだ");
 S.pending=null;
 if(action==="pushback") pushBackGauge(by,3);
 else if(action==="draw") drawEffect(by,4,"背水の陣");
-else if(action==="points"){ S.players[by].pendingBonus+=3; log(by,"次のターンのポイント+3が予約された");}
+else if(action==="points"){ S.players[by].pendingBonus+=3; log(by,"次の自分のターンのポイント+3が予約された");}
 setPending();
 render();
 }
@@ -1338,16 +1316,925 @@ else render();
 }
 </script>
 <script>
-(function(){
-var input=document.getElementById('titlePlayerName');
-try{var saved=localStorage.getItem('niakuro-player-name');if(saved)input.value=saved;}catch(e){}
-function saveName(){var name=input.value.trim();if(name){PLAYER_NAME=name;try{localStorage.setItem('niakuro-player-name',name);}catch(e){}}}
-input.addEventListener('change',saveName);input.addEventListener('blur',saveName);
-async function connectRoom(){if(roomConnection)return roomConnection;roomConnection=new signalR.HubConnectionBuilder().withUrl('/gameHub').withAutomaticReconnect().build();roomConnection.on('roomState',function(s){renderLobby(s);});await roomConnection.start();return roomConnection;}
-function renderLobby(s){roomStarted=!!s.started;if(!roomStarted){var list=(s.players||[]);document.getElementById('roomPlayers').innerHTML=list.map(function(p){return '<div>'+esc(p.name)+' — '+esc(p.deckId)+'</div>';}).join('');document.getElementById('roomStatus').textContent=list.length>=2?'対戦相手が入りました。開始できます。':'対戦相手を待っています。';}else{ROOM_NAMES[0]=PLAYER_NAME||'プレイヤー1';document.getElementById('roomStatus').textContent='対戦が開始されました。';showView('battle');newGame('2p');}}
-async function createRoom(){saveName();try{await connectRoom();roomCode=await roomConnection.invoke('CreateRoom',PLAYER_NAME,document.getElementById('roomDeck').value);document.getElementById('roomLobby').classList.remove('hidden');document.getElementById('roomCodeLabel').textContent='ルームコード：'+roomCode;}catch(e){document.getElementById('roomStatus').textContent=e.message||String(e);}}
-async function joinRoom(){saveName();var code=document.getElementById('roomCode').value.trim().toUpperCase();if(!code){document.getElementById('roomStatus').textContent='ルームコードを入力してください。';return;}try{await connectRoom();await roomConnection.invoke('JoinRoom',code,PLAYER_NAME,document.getElementById('roomDeck').value);roomCode=code;document.getElementById('roomLobby').classList.remove('hidden');document.getElementById('roomCodeLabel').textContent='ルームコード：'+roomCode;}catch(e){document.getElementById('roomStatus').textContent=e.message||String(e);}}
-async function startRoom(){try{await roomConnection.invoke('StartRoom',roomCode);}catch(e){document.getElementById('roomStatus').textContent=e.message||String(e);}}
-document.addEventListener('click',function(e){var t=e.target.closest('[data-act]');if(!t)return;var act=t.getAttribute('data-act');if(act==='nav-room'){saveName();showView('room');}else if(act==='room-create'){createRoom();}else if(act==='room-join'){joinRoom();}else if(act==='room-start'){startRoom();}});
+"use strict";
+/* =========================================================
+CPU（どのデッキ・どの選択待ちでも解決できる汎用AI）
+========================================================= */
+var _cpuTimer=null;
+function poke(){
+if(IS_NODE ||!S || S.over || S.passGate || S.phase!=="play") return;
+if(_cpuTimer) return;
+if(S.mode==="2p") return;
+var drive=false;
+if(S.pending && cpuControls(S.pending.by)) drive=true;
+else if(!S.pending && cpuControls(S.active)) drive=true;
+if(!drive) return;
+_cpuTimer=setTimeout(function(){
+_cpuTimer=null;
+if(!S || S.over) return;
+if(S.pending && cpuControls(S.pending.by)) cpuResolvePending();
+else if(!S.pending && cpuControls(S.active)) cpuStep();
+render();
+}, S.mode==="auto"?450:700);
+}
+function cpuWithAct(fn){ CPU_ACT=true; try{ fn();} finally { CPU_ACT=false;}}
+function cpuHaisuiChoice(by){
+var rem=remainingFor(by), order = rem<=4? ["pushback","draw","points"]: ["draw","pushback","points"];
+for(var i=0;i<order.length;i++){ if(S.haisuiTaken[order[i]]===undefined) return order[i];}
+return "draw";
+}
+function cpuBestDiscardTarget(fromP){
+var hand=S.players[fromP].hand, best=null;
+hand.forEach(function(c){ if(isRevealed(fromP,c) && (!best || CARDS[c.cardId].cost>CARDS[best.cardId].cost)) best=c;});
+if(!best && hand.length) best=hand[Math.floor(Math.random()*hand.length)];
+return best;
+}
+function cpuDamageTarget(by, amount){
+var tf=null;
+S.players[1-by].field.forEach(function(u){
+if(!tf) tf=u;
+else if(unitHp(u)<=amount && unitHp(tf)>amount) tf=u;
+else if(unitHp(u)<=amount && unitHp(tf)<=amount && unitAtk(u)>unitAtk(tf)) tf=u;
+else if(unitHp(tf)>amount && unitAtk(u)>unitAtk(tf)) tf=u;
+});
+return tf;
+}
+function cpuRichChoice(by){
+var opp=S.players[1-by];
+var killable=opp.field.some(function(u){ return unitHp(u)<=3;});
+if(killable) return 2;
+if(S.players[by].hand.length<=3) return 1;
+return 3;
+}
+function cpuMasterChoice(by){
+var opp=S.players[1-by];
+var lowCount=opp.field.filter(function(u){ return unitHp(u)<=3;}).length;
+if(lowCount>=2) return 2;
+if(hasMasterCopyTarget(by) && S.players[by].base>=6) return 4;
+if(S.players[by].hand.length<=4) return 1;
+return 3;
+}
+function cpuMasterCopyPick(by){
+var ctx=S.masterCtx, pl=S.players[by], src=findUnit(by, ctx.sourceUid);
+if(!src) return null;
+var selfId=src.cardId, best=null, bestCost=-1;
+pl.hand.forEach(function(c){ var cd=CARDS[c.cardId]; if(cd.type==="unit" && c.cardId!==selfId && cd.cost>bestCost){ best={zone:"hand", uid:c.uid}; bestCost=cd.cost; }});
+if(best) return best;
+pl.grave.forEach(function(c){ var cd=CARDS[c.cardId]; if(cd.type==="unit" && c.cardId!==selfId && cd.cost>bestCost){ best={zone:"grave", uid:c.uid}; bestCost=cd.cost; }});
+if(best) return best;
+var bestAtk=999;
+pl.field.forEach(function(u){ if(u!==src && u.cardId!==selfId && unitAtk(u)<bestAtk){ best={zone:"field", uid:u.uid}; bestAtk=unitAtk(u); }});
+return best;
+}
+function cpuResolvePending(){
+if(!S ||!S.pending ||!cpuControls(S.pending.by)) return;
+var p=S.pending, by=p.by;
+cpuWithAct(function(){
+if(p.kind==="haisui"){ chooseHaisui(cpuHaisuiChoice(by)); return;}
+if(p.kind==="discardChosen"){ var t=cpuBestDiscardTarget(1-by); if(t) clickHandCard(1-by, t.uid); return;}
+if(p.kind==="selfish"){
+if(p.needOwn){ var own=S.players[by].hand.slice().sort(function(a,b){ return CARDS[a.cardId].cost-CARDS[b.cardId].cost;})[0]; if(own){ clickHandCard(by, own.uid); return;}}
+if(p.needOpp){ var t2=cpuBestDiscardTarget(1-by); if(t2) clickHandCard(1-by, t2.uid); return;}
+return;
+}
+if(p.kind==="heal"){
+var ht=null; S.players[by].field.forEach(function(u){ if(u.damage>0 && (!ht || u.damage>ht.damage)) ht=u;});
+if(ht) clickFieldUnit(by, ht.uid); return;
+}
+if(p.kind==="damage" || p.kind==="selfishHp"){ var dt=cpuDamageTarget(by, p.amount||1); if(dt) clickFieldUnit(1-by, dt.uid); return;}
+if(p.kind==="buff"){
+var bf=null; S.players[by].field.forEach(function(u){ if(!p.chosen[u.uid] && (!bf || unitAtk(u)>unitAtk(bf))) bf=u;});
+if(bf) clickFieldUnit(by, bf.uid); return;
+}
+if(p.kind==="ownBuff"){
+var ob=null; S.players[by].field.forEach(function(u){ if(unitMaxHp(u)>2 && (!ob || unitAtk(u)>unitAtk(ob))) ob=u;});
+if(!ob && S.players[by].field.length) ob=S.players[by].field[0];
+if(ob) clickFieldUnit(by, ob.uid); return;
+}
+if(p.kind==="guardGrant"){
+var gg=null; S.players[by].field.forEach(function(u){ if(!hasGuard(u) && (!gg || unitAtk(u)>unitAtk(gg))) gg=u;});
+if(!gg && S.players[by].field.length) gg=S.players[by].field[0];
+if(gg) clickFieldUnit(by, gg.uid); return;
+}
+if(p.kind==="deploy"){
+var cands=deployCandidates(by, p.limit).sort(function(a,b){ return CARDS[b.cardId].cost-CARDS[a.cardId].cost;});
+if(cands.length) chooseFreeDeploy(cands[0].uid); return;
+}
+if(p.kind==="deckDeploy"){
+var dc=deckDeployCandidates(by, p.maxCost).sort(function(a,b){ return CARDS[b.cardId].cost-CARDS[a.cardId].cost;});
+if(dc.length) chooseDeckDeploy(dc[0].uid); return;
+}
+if(p.kind==="drawPick"){
+var bestP=null; p.pool.forEach(function(c){ if(!bestP || CARDS[c.cardId].cost>CARDS[bestP.cardId].cost) bestP=c;});
+if(bestP) chooseDrawPick(bestP.uid); return;
+}
+if(p.kind==="rich"){ chooseRichMode(cpuRichChoice(by)); return;}
+if(p.kind==="master"){ chooseMasterMode(cpuMasterChoice(by)); return;}
+if(p.kind==="masterCopy"){ var pick=cpuMasterCopyPick(by); if(pick) chooseMasterCopy(pick.zone, pick.uid); return;}
+});
+render();
+}
+function cpuPlayTacticOk(pIdx, card){
+var d=CARDS[card.cardId], fx=d.fx||{}, me=S.players[pIdx], opp=S.players[1-pIdx];
+switch(fx.kind){
+case "draw": return true;
+case "ramp": return true;
+case "pushback": return remainingFor(pIdx)<=8;
+case "discardRandom": return opp.hand.length>=3;
+case "fetchBig": return me.deck.some(function(c){ var cd=CARDS[c.cardId]; return cd.type==="unit" && cd.cost>=fx.v;});
+case "fetchTactics": return true;
+case "drawPick": return true;
+case "targetDamage": return opp.field.some(function(u){ return unitHp(u)<=fx.v || unitAtk(u)>=5;});
+case "sake": return me.field.some(function(u){ return unitAtk(u)>=3 && unitMaxHp(u)>2;});
+case "damageAllOpp": return opp.field.length>=2;
+case "damageAllUnits": {
+var os=opp.field.reduce(function(s,u){ return s+unitAtk(u)+unitHp(u);},0), ms=me.field.reduce(function(s,u){ return s+unitAtk(u)+unitHp(u);},0);
+return opp.field.length>=3 && os-ms>=6;
+}
+case "destroyRandom": return opp.field.some(function(u){ return CARDS[u.cardId].cost>=5;});
+}
+return false;
+}
+function cpuStep(){
+if(!S || S.over || S.phase!=="play" || S.pending) return;
+if(!cpuControls(S.active)) return;
+var me=S.active, pl=S.players[me], opp=S.players[1-me];
+cpuWithAct(function(){
+if(S.discardMode){
+var low=pl.hand.slice().sort(function(a,b){ return CARDS[a.cardId].cost-CARDS[b.cardId].cost;})[0];
+if(low) clickHandCard(me, low.uid);
+if(!S.discardMode && pl.hand.length<=HAND_LIMIT) finishEndTurn();
+return;
+}
+/* 超絶の起動能力 */
+var sup=null; pl.field.forEach(function(u){ if(defsOf(u).some(function(d){ return d.fx && d.fx.activated==="selfish";}) &&!u.abilityUsed) sup=u;});
+if(sup){
+S.selected=sup.uid;
+if(pl.hand.length<=4){ useSuperAbility(1, sup); return;}
+if(remainingFor(1-me)<=3){ useSuperAbility(3, sup); return;}
+if(opp.field.length){ useSuperAbility(2, sup); return;}
+S.selected=null;
+}
+var playable=pl.hand.filter(function(c){ return CARDS[c.cardId].cost<=pl.avail;});
+/* 先にランプとドロー系戦術 */
+var early=playable.filter(function(c){ var d=CARDS[c.cardId]; return d.type==="tactic" && d.fx && (d.fx.kind==="ramp"||d.fx.kind==="draw"||d.fx.kind==="drawPick"||d.fx.kind==="fetchBig"||d.fx.kind==="fetchTactics");});
+if(early.length){ var ec=early.sort(function(a,b){ return CARDS[a.cardId].cost-CARDS[b.cardId].cost;})[0]; if(cpuPlayTacticOk(me, ec)){ playCardInternal(me, ec.uid); return;}}
+/* ユニットは高コスト優先 */
+var units=playable.filter(function(c){ return CARDS[c.cardId].type==="unit";}).sort(function(a,b){ return CARDS[b.cardId].cost-CARDS[a.cardId].cost;});
+if(units.length && pl.field.length<FIELD_LIMIT){ playCardInternal(me, units[0].uid); return;}
+/* その他の戦術 */
+var tacs=playable.filter(function(c){ return CARDS[c.cardId].type==="tactic";});
+for(var ti=0; ti<tacs.length; ti++){ if(cpuPlayTacticOk(me, tacs[ti])){ playCardInternal(me, tacs[ti].uid); return;}}
+/* 攻撃 */
+var ready=pl.field.filter(function(u){ return u.attacksUsed<maxAttacks(u) && (u.summoned<S.globalTurn || u.haste || anyDef(u,"canAttackUnits"));});
+for(var i=0;i<ready.length;i++){
+var u=ready[i], myAtk=atkWhenAttacking(u), target=null;
+opp.field.forEach(function(v){
+if(!canAttackUnit(u,v)) return;
+if(myAtk>=unitHp(v) && (counterAtk(v)<unitHp(u) || unitAtk(v)>=4 || CARDS[v.cardId].cost>=5)){
+if(!target || unitAtk(v)>unitAtk(target)) target=v;
+}
+});
+if(target){ initiateUnit(u, target); return;}
+}
+for(var j=0;j<ready.length;j++){
+var u2=ready[j];
+if(canAttackFace(u2)){ initiateFace(u2); return;}
+var anyT=null;
+opp.field.forEach(function(v){ if(canAttackUnit(u2,v) && atkWhenAttacking(u2)>=unitHp(v) &&!anyT) anyT=v;});
+if(anyT){ initiateUnit(u2, anyT); return;}
+}
+/* ターン終了 */
+if(pl.hand.length>HAND_LIMIT){ endTurn(); return;}
+finishEndTurn();
+});
+render();
+}
+/* CPU同士の自動対戦（検証用。Node からも呼べる） */
+function simulateAutoGame(d0, d1, maxSteps){
+var saved=S;
+S=newState("auto", d0, d1);
+S.phase="play"; S.players[0].mulliganUsed=true; S.players[1].mulliganUsed=true;
+startTurn();
+var steps=0, cap=maxSteps||30000;
+while(!S.over && steps<cap){
+steps++;
+if(S.pending) cpuResolvePending();
+else cpuStep();
+if(S.globalTurn>400 &&!S.over) gameOver(remainingFor(0)>remainingFor(1)?0:1, "長期戦のためゲージ残りで判定");
+}
+var res={over:S.over, winner:S.winner, turns:S.globalTurn, steps:steps, gauge:S.gauge};
+S=saved;
+return res;
+}
+if(typeof module!=="undefined" && module.exports){ module.exports={simulateAutoGame:simulateAutoGame, CARDS:CARDS, DECKS:DECKS};}
+</script>
+<script>
+"use strict";
+/* =========================================================
+カード詳細ポップアップ
+========================================================= */
+var DETAIL=null;
+function openCardDetail(kind,pIdx,uid){ DETAIL={kind:kind,pIdx:pIdx,uid:uid}; renderDetail();}
+function closeDetail(){ DETAIL=null; renderDetail();}
+function detailAct(){
+if(!DETAIL) return;
+var d=DETAIL; DETAIL=null;
+if(d.kind==="hand") clickHandCard(d.pIdx,d.uid); else clickFieldUnit(d.pIdx,d.uid);
+renderDetail();
+}
+function viewerIdx(){
+if(!S) return 0;
+if(S.phase==="mulligan") return S.mulliganTurn;
+if(S.mode==="auto") return -1;
+return S.mode==="cpu"?0:S.active;
+}
+function handVisible(pIdx, card){ return S.mode==="auto" || pIdx===viewerIdx() || isRevealed(pIdx, card);}
+function renderDetail(){
+if(IS_NODE) return;
+var root=document.getElementById("detailRoot"); if(!root) return;
+if(!DETAIL||!S){ root.innerHTML=""; return;}
+if(S.passGate||S.over){ DETAIL=null; root.innerHTML=""; return;}
+var pIdx=DETAIL.pIdx, blocked=humanBlocked()&&!CPU_ACT, actLabel="";
+var head="", typeLine="", statsLine="", statusLines=[], fxText="";
+if(DETAIL.kind==="unit"){
+var u=findUnit(pIdx,DETAIL.uid);
+if(!u){ DETAIL=null; root.innerHTML=""; return;}
+var d=defOf(u);
+head='<div class="d-head"><span class="d-cost">'+d.cost+'</span><span class="d-name">'+esc(d.name)+"</span></div>";
+typeLine="ユニット ／ 特徴："+((d.traits||[]).join("・")||"なし")+(d.allTraits?"（＋全特徴）":"");
+var parts=["基本 "+d.atk]; if(u.atkBuff) parts.push("強化 +"+u.atkBuff); if(u.auraAtk) parts.push("オーラ "+(u.auraAtk>0?"+":"")+u.auraAtk); if(u.scale) parts.push("効果ドロー連動 +"+u.scale); var lb2=linkageBonus(u); if(lb2) parts.push("連携 +"+lb2);
+statsLine='<div class="d-stats"><span>攻撃力 '+unitAtk(u)+'</span><span>体力 '+unitHp(u)+"/"+unitMaxHp(u)+"</span></div>";
+statusLines.push("攻撃力の内訳："+parts.join(" ／ "));
+if(u.damage>0) statusLines.push("受けているダメージ："+u.damage);
+if(hasGuard(u)) statusLines.push("守護（相手はこのユニットしか攻撃できない）"+(u.grantedGuard?"※付与された守護":""));
+if(anyDef(u,"canAttackUnits")) statusLines.push("先手必勝（出たターンに、相手のユニットを攻撃できる）");
+if(anyDef(u,"onlyUnits")) statusLines.push("このユニットは、相手のユニットしか攻撃できない");
+if(battleCapOf(u)>0) statusLines.push("戦闘で受けるダメージは最大で"+battleCapOf(u)+"になる");
+if(battleImmune(u)) statusLines.push("登場したターンの間、戦闘によるダメージを受けない");
+if(u.haste) statusLines.push("速攻（出たターンでも攻撃できる）");
+if(u.destroyAfter) statusLines.push("酒！酒！酒！：攻撃した後に破壊される");
+if(u.copiedDef) statusLines.push("コピー中："+CARDS[u.copiedDef].name+" の能力を併せ持っている");
+if(anyDef(u,"scales")) statusLines.push("現在の X ＝ "+u.scale+"（効果で引いたカード "+S.players[u.owner].effectDraws+" 枚の半分）");
+var leftAtk=maxAttacks(u)-u.attacksUsed;
+if(leftAtk<=0) statusLines.push("このターンは攻撃し終わった");
+else if(u.owner===S.active && S.phase==="play") statusLines.push("このターンあと"+leftAtk+"回攻撃できる"+(u.summoned>=S.globalTurn &&!u.haste &&!anyDef(u,"canAttackUnits")?"（ただし出たばかりでまだ攻撃できない）":(u.summoned>=S.globalTurn &&!u.haste && anyDef(u,"canAttackUnits")?"（出たターンなのでユニットへの攻撃のみ）":"")));
+if(defsOf(u).some(function(dd){ return dd.fx&&dd.fx.activated==="selfish";})) statusLines.push(u.abilityUsed?"起動能力：このターンは使用済み":"起動能力：このターンはまだ使える（ユニットを選ぶと使えます）");
+if(u.owner===S.active && debuffAgainst(u.owner)>0) statusLines.push("攻撃する時の攻撃力 -"+debuffAgainst(u.owner)+"（相手のゲーマーにあくろ）");
+fxText=d.text||"（効果なし）";
+if(u.copiedDef) fxText+="\n"+CARDS[u.copiedDef].name+"："+(CARDS[u.copiedDef].text||"");
+if(!blocked){
+if(S.pending){ if(unitTargetable(u)) actLabel="このユニットを選ぶ";}
+else if(canAct()&&isHumanTurn()){
+if(u.owner===S.active) actLabel=(S.selected===u.uid)?"選択をやめる":"このユニットを選ぶ";
+else if(S.selected){ var atkU=findUnit(S.active,S.selected); if(atkU && canAttackUnit(atkU,u)) actLabel="このユニットを攻撃する";}
+}
+}
+} else {
+var pl=S.players[pIdx], card=null;
+for(var i=0;i<pl.hand.length;i++) if(pl.hand[i].uid===DETAIL.uid) card=pl.hand[i];
+if(!card){ DETAIL=null; root.innerHTML=""; return;}
+var cd=CARDS[card.cardId];
+var visible=handVisible(pIdx,card);
+if(!visible){
+head='<div class="d-head"><span class="d-name">裏向きのカード</span></div>';
+typeLine="相手の手札（表向きになっていないため、中身は見られません）";
+} else {
+head='<div class="d-head"><span class="d-cost">'+cd.cost+'</span><span class="d-name">'+esc(cd.name)+"</span></div>";
+typeLine=(cd.type==="unit"?"ユニット":"戦術")+(cd.type==="unit"?" ／ 特徴："+((cd.traits||[]).join("・")||"なし")+(cd.allTraits?"（＋全特徴）":""):"");
+if(cd.type==="unit"){
+var stA=cd.atk, stH=cd.hp;
+if(cd.fx && cd.fx.scales){ var xx=Math.floor(S.players[pIdx].effectDraws/2); stA=xx; stH=xx;}
+statsLine='<div class="d-stats"><span>攻撃力 '+stA+'</span><span>体力 '+stH+"</span></div>";
+}
+if(isRevealed(pIdx,card)&&pIdx!==viewerIdx()) statusLines.push("表向きになっているカード（両プレイヤーから見える）");
+fxText=cd.text||"（効果なし）";
+}
+if(!blocked){
+var p=S.pending;
+if(p){
+if(p.kind==="discardChosen"&&pIdx===1-p.by) actLabel="このカードを選んで捨てる";
+else if(p.kind==="selfish"&&((p.needOwn&&pIdx===p.by)||(p.needOpp&&pIdx===1-p.by))) actLabel="このカードを選んで捨てる";
+else if(p.kind==="deploy"&&pIdx===p.by&&cd.type==="unit"&&cd.cost<p.limit) actLabel="コストを支払わずに場に出す";
+}
+else if(S.discardMode&&pIdx===S.active) actLabel="このカードを捨てる";
+else if(canAct()&&isHumanTurn()&&pIdx===S.active&&cd.cost<=pl.avail&&(cd.type!=="unit"||pl.field.length<FIELD_LIMIT)) actLabel="このカードを出す";
+}
+}
+var h='<div class="detail-wrap" data-act="backdrop"><div class="detail-sheet">'
++head
++'<div class="d-type">'+esc(typeLine)+"</div>"
++statsLine
++(statusLines.length?'<div class="d-status">'+statusLines.map(function(s){ return "<div>"+esc(s)+"</div>";}).join("")+"</div>":"")
++(fxText?'<p class="d-fx">'+esc(fxText).replace(/\n/g,"<br>")+"</p>":"")
++'<div class="detail-actions">'
++(actLabel?'<button class="btn primary" data-act="detail-act">'+esc(actLabel)+"</button>":"")
++'<button class="btn" data-act="detail-close">閉じる</button>'
++"</div></div></div>";
+root.innerHTML=h;
+}
+/* =========================================================
+描画
+========================================================= */
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function pendingTargetsHand(pIdx){
+var p=S.pending; if(!p) return false;
+if(p.kind==="discardChosen") return pIdx===1-p.by;
+if(p.kind==="selfish") return (p.needOwn && pIdx===p.by) || (p.needOpp && pIdx===1-p.by);
+if(p.kind==="deploy") return pIdx===p.by;
+return false;
+}
+function unitTargetable(u){
+var p=S.pending; if(!p) return false;
+if(p.kind==="heal") return u.owner===p.by && u.damage>0;
+if(p.kind==="damage"||p.kind==="selfishHp") return u.owner===1-p.by;
+if(p.kind==="buff") return u.owner===p.by &&!p.chosen[u.uid];
+if(p.kind==="ownBuff"||p.kind==="guardGrant") return u.owner===p.by;
+return false;
+}
+function unitCardHTML(u){
+var d=defOf(u), p=S.pending;
+var targetable=unitTargetable(u);
+var selectable=!p && canAct() && isHumanTurn() && u.owner===S.active;
+var attackTarget=false;
+if(!p && canAct() && isHumanTurn() && S.selected && u.owner===1-S.active){ var au=findUnit(S.active,S.selected); attackTarget=!!(au && canAttackUnit(au,u));}
+var clickable=targetable||selectable||attackTarget;
+var cls="ucard";
+if(targetable) cls+=" targetable";
+if(S.selected===u.uid) cls+=" selected";
+if(selectable && (canAttackFace(u) || S.players[1-S.active].field.some(function(v){ return canAttackUnit(u,v);}))) cls+=" playable";
+if(u.attacksUsed>=maxAttacks(u)) cls+=" exhausted";
+var badges="";
+if(hasGuard(u)) badges+='<span class="bdg guard">守護</span>';
+if(anyDef(u,"canAttackUnits")) badges+='<span class="bdg sente">先手必勝</span>';
+if(u.haste) badges+='<span class="bdg haste">速攻</span>';
+if(u.destroyAfter) badges+='<span class="bdg sake">酒：攻撃後破壊</span>';
+if(u.atkBuff>0) badges+='<span class="bdg buff">強化+'+u.atkBuff+"</span>";
+var lb=linkageBonus(u); if(lb>0) badges+='<span class="bdg buff">連携+'+lb+"</span>";
+if(u.copiedDef) badges+='<span class="bdg buff">コピー中</span>';
+if(u.attacksUsed>=maxAttacks(u)) badges+='<span class="bdg">攻撃済</span>';
+else if(u.summoned>=S.globalTurn && u.owner===S.active) badges+='<span class="bdg">出たターン</span>';
+if(defsOf(u).some(function(dd){ return dd.fx&&dd.fx.activated==="selfish";}) && u.abilityUsed) badges+='<span class="bdg">起動済</span>';
+var hp=unitHp(u), mhp=unitMaxHp(u);
+var stats='<span>攻 '+unitAtk(u)+'</span><span class="'+(u.damage>0?"hp-dmg":"")+'">体 '+hp+"/"+mhp+"</span>";
+var debuff=(u.owner===S.active && debuffAgainst(u.owner)>0)? '<div class="tp">攻撃時 -'+debuffAgainst(u.owner)+"（相手のゲーマーにあくろ）</div>": "";
+var inner='<span class="cost">'+d.cost+'</span><span class="nm">'+esc(d.name)+'</span><span class="tp">'+(d.traits||[]).join("・")+(d.allTraits?"・全特徴":"")+'</span><span class="stats">'+stats+"</span>"+debuff+(badges?'<span class="badges">'+badges+"</span>":"")+'<span class="more">タップで詳細</span>';
+return '<button type="button" class="'+cls+'" data-act="detail" data-kind="unit" data-p="'+u.owner+'" data-u="'+u.uid+'"'+(clickable?"":"") +">"+inner+"</button>";
+}
+function zoneHTML(pIdx, isBottom){
+var pl=S.players[pIdx], isTurn=(S.phase==="play" && S.active===pIdx &&!S.over);
+var tag = S.mode==="cpu"? (pIdx===0?'<span class="tag tag-you">あなた</span>':'<span class="tag tag-cpu">CPU</span>'): (S.mode==="auto"?'<span class="tag tag-cpu">CPU</span>':"");
+var pts = isTurn? '<span class="pts">ポイント '+pl.avail+"</span>（基本"+pl.base+"）"
+: "次ターンの基本ポイント "+(pl.firstTurn?2:pl.base+1)+(pl.carry>0?"＋繰越"+pl.carry:"")+(pl.pendingBonus>0?"＋予約"+pl.pendingBonus:"");
+var h='<section class="player-zone'+(isTurn?" turn":"")+'"><div class="pz-head"><span class="pz-name">'+esc(pname(pIdx))+tag+'<span class="deckname">'+esc(deckName(pIdx))+"「"+esc(pl.deckDef.sub||"")+'」</span></span><span class="pz-stats"><span>デッキ <b>'+pl.deck.length+'</b></span><span>墓地 <b>'+pl.grave.length+'</b></span><span>手札 <b>'+pl.hand.length+'</b></span><span>'+pts+"</span></span></div>";
+h+='<div class="field">';
+pl.field.forEach(function(u){ h+=unitCardHTML(u);});
+for(var i=pl.field.length;i<FIELD_LIMIT;i++) h+='<div class="slot">ユニット枠</div>';
+h+="</div>";
+h+='<div class="handrow"><span class="handlabel">'+(isBottom?"手札（タップで詳細・出す）":"相手の手札（表向きのカードは中身が見える）")+"</span>";
+var handTarget=pendingTargetsHand(pIdx);
+pl.hand.forEach(function(c){
+var cd=CARDS[c.cardId];
+var vis=handVisible(pIdx,c);
+if(vis){
+var playable = isBottom &&!S.pending &&!S.discardMode && canAct() && isHumanTurn() && pIdx===S.active && cd.cost<=pl.avail && (cd.type!=="unit" || pl.field.length<FIELD_LIMIT);
+var cls="ucard hcard"+(playable?" playable":"")+(handTarget?" targetable":"");
+h+='<button type="button" class="'+cls+'" data-act="detail" data-kind="hand" data-p="'+pIdx+'" data-u="'+c.uid+'"><span class="cost">'+cd.cost+'</span><span class="nm">'+esc(cd.name)+'</span><span class="tp">'+(cd.type==="unit"?"ユニット "+cd.atk+"/"+cd.hp:"戦術")+(isRevealed(pIdx,c)&&pIdx!==viewerIdx()?" ・表向き":"")+'</span><span class="more">タップで詳細</span></button>';
+} else {
+h+='<button type="button" class="backcard'+(handTarget?" targetable":"")+'" '+(handTarget?'data-act="detail" data-kind="hand" data-p="'+pIdx+'" data-u="'+c.uid+'"':"disabled")+">CARD<br>（裏向き）</button>";
+}
+});
+if(pl.hand.length===0) h+='<span class="handlabel">手札なし</span>';
+h+="</div></section>";
+return h;
+}
+function pendingWaitNote(by){
+if(cpuControls(by)) return "CPUが選択しています…";
+if(S.mode==="2p" && by!==S.active) return "（"+pname(by)+" の選択です。この画面で選んでください）";
+return "";
+}
+function promptHTML(){
+if(S.over || S.passGate) return "";
+var p=S.pending;
+if(p){
+if(p.kind==="haisui" || p.kind==="drawPick" || p.kind==="deckDeploy" || p.kind==="masterCopy") return "";
+var title="", note=pendingWaitNote(p.by), btns="";
+if(p.kind==="discardChosen") title="にあくろの効果：相手の手札を1枚選んで捨ててください（裏向きは中身を見ずに選ぶ／表向きは狙えます）";
+if(p.kind==="selfish") title="超絶自己中にあくろ：捨てるカードを選んでください（自分の手札："+(p.needOwn?"あと1枚":"完了")+" ／ 相手の手札："+(p.needOpp?"あと1枚":"完了")+"）";
+if(p.kind==="heal") title=pname(p.by)+" の回復：体力を"+p.amount+"回復する自分のユニットを選んでください";
+if(p.kind==="damage") title="対象選択："+p.amount+"ダメージを与える相手のユニットを選んでください";
+if(p.kind==="buff") title="ゲーマーニトグリ：攻撃力を+1する自分のユニットを選んでください（あと"+p.left+"体）";
+if(p.kind==="ownBuff") title="酒！酒！酒！：対象の自分のユニットを選んでください";
+if(p.kind==="selfishHp") title="超絶自己中にあくろ：体力の最大値を-1する相手のユニットを選んでください";
+if(p.kind==="guardGrant") title="ゲーマーマスカット：守護を付与する自分のユニットを選んでください";
+if(p.kind==="deploy") title="無数の選択肢ミルキー：コストを支払わずに出すユニットを手札から選んでください（コスト"+p.limit+"未満）";
+if(p.kind==="rich"){
+title="器用富豪やーや：使う効果を1つ選んでください"+(p.ctx?"（選んで解決した後、攻撃します）":"");
+if(!cpuControls(p.by)){
+btns='<div class="p-btns">'
++'<button class="btn teal" data-act="rich-mode" data-n="1">① カードを1枚引く</button>'
++'<button class="btn teal" '+(S.players[1-p.by].field.length?"":"disabled")+' data-act="rich-mode" data-n="2">② 相手のユニット1体に3ダメージ</button>'
++'<button class="btn teal" data-act="rich-mode" data-n="3">③ このターンのポイント+1</button></div>';
+}
+}
+if(p.kind==="master"){
+var ctx=S.masterCtx;
+title="手練手管やーや：使う効果を選んでください（あと"+(ctx?ctx.picksLeft:1)+"回）"+(ctx&&ctx.attackerUid?"（選んで解決した後、攻撃します）":"");
+if(!cpuControls(p.by)){
+btns='<div class="p-btns">'
++'<button class="btn teal" data-act="master-mode" data-n="1">① カードを2枚引く</button>'
++'<button class="btn teal" data-act="master-mode" data-n="2">② 相手のユニット全てに3ダメージ</button>'
++'<button class="btn teal" data-act="master-mode" data-n="3">③ このターンのポイント+2</button>'
++'<button class="btn teal" '+(hasMasterCopyTarget(p.by)?"":"disabled")+' data-act="master-mode" data-n="4">④ ユニットを除外して能力をコピー</button></div>';
+}
+}
+return '<div class="prompt"><span class="p-title">'+esc(title)+"</span>"+(note?' <span class="msg">'+esc(note)+"</span>":"")+btns+"</div>";
+}
+if(S.discardMode){
+var pl=S.players[S.active], need=pl.hand.length-HAND_LIMIT;
+return '<div class="prompt"><span class="p-title">手札が上限（'+HAND_LIMIT+'枚）を超えています。手札をクリックして '+need+' 枚捨ててください。</span></div>';
+}
+if(S.phase!=="play") return "";
+if(S.mode==="auto") return '<div class="prompt"><span class="p-title">CPU同士の対戦を観戦中です。</span> <span class="msg">自動で進行します。気になった動きを試遊メモに残せます。</span></div>';
+if(S.mode==="cpu" && S.active===1) return '<div class="prompt"><span class="p-title">CPUのターンです。</span> <span class="msg">行動を見ながら、気になった動きを試遊メモに残せます。</span></div>';
+if(S.selected){
+var u=findUnit(S.active, S.selected);
+if(u){
+var d=defOf(u), btns="";
+if(canAttackFace(u)) btns+='<button class="btn primary" data-act="attack-face">相手プレイヤーを攻撃（実効攻撃力 '+atkWhenAttacking(u)+'）</button>';
+else if(u.attacksUsed<maxAttacks(u) && u.owner===S.active) btns+='<span class="msg">'+(anyDef(u,"onlyUnits")?"このユニットは相手のユニットしか攻撃できません。":(hasGuardUnit(1-S.active)?"相手の場に守護ユニットがいるため、プレイヤーを攻撃できません。":"このユニットは今ターン、プレイヤーを攻撃できません。"))+"</span>";
+else btns+='<span class="msg">このユニットは今ターン攻撃できません。</span>';
+if(defsOf(u).some(function(dd){ return dd.fx&&dd.fx.activated==="selfish";}) &&!u.abilityUsed){
+if(!S.abilityMenu) btns+='<button class="btn" data-act="ability-menu">起動能力を使う</button>';
+else {
+btns+='<button class="btn teal" data-act="ability" data-n="1">① 1枚引く＋自分と相手の手札を1枚ずつ捨てる</button>';
+btns+='<button class="btn teal" '+(S.players[1-S.active].field.length?"":"disabled")+' data-act="ability" data-n="2">② 相手ユニットの体力最大値-1</button>';
+btns+='<button class="btn teal" data-act="ability" data-n="3">③ ゲージを相手側に1進める</button>';
+}
+}
+btns+='<button class="btn ghost" data-act="deselect">選択をやめる</button>';
+return '<div class="prompt"><span class="p-title">'+esc(d.name)+" を選択中（攻 "+unitAtk(u)+" ／ 体 "+unitHp(u)+"/"+unitMaxHp(u)+'）</span><div class="p-btns">'+btns+'</div><span class="msg">ユニットを攻撃する場合は、相手の場のユニットをタップして詳細から「攻撃する」を選んでください。</span></div>';
+}
+}
+return '<div class="prompt"><span class="p-title">'+esc(pname(S.active))+' の行動</span> <span class="msg">カードをタップすると詳細が見られます。手札のカードは詳細から出せます。攻撃はユニットをタップして選んでください。</span></div>';
+}
+function turnbarHTML(){
+if(S.phase==="mulligan") return '<span class="now">対戦準備：マリガン</span>';
+if(S.over) return '<span class="now">対戦終了</span>';
+var pl=S.players[S.active];
+var dis=(S.pending || S.passGate || cpuControls(S.active))? " disabled": "";
+return '<span class="now">'+esc(pname(S.active))+" のターン"+S.turnCount[S.active]+"（全体"+S.globalTurn+'ターン目）</span><span class="msg">残りポイント <b>'+pl.avail+'</b> ／ 使い残しの半分（切り捨て）が次ターンに繰り越されます</span><button class="btn primary" data-act="end-turn"'+dis+">ターン終了</button>";
+}
+function pickCardBtn(c, act, extra){
+var cd=CARDS[c.cardId];
+return '<button type="button" class="ucard hcard" data-act="'+act+'" data-u="'+c.uid+'"'+(extra||"")+'"><span class="cost">'+cd.cost+'</span><span class="nm">'+esc(cd.name)+'</span><span class="tp">'+(cd.type==="unit"?"ユニット "+cd.atk+"/"+cd.hp:"戦術")+'</span><span class="more">タップで選択</span></button>';
+}
+function overlayHTML(){
+if(S.over){
+var plays=Object.keys(S.stats.plays).map(function(k){ return [k,S.stats.plays[k]];}).sort(function(a,b){ return b[1]-a[1];}).slice(0,5);
+var ph=plays.map(function(x){ return esc(x[0])+"×"+x[1];}).join("、")||"なし";
+return '<div class="overlay"><div class="sheet"><div class="winner-banner">'+(S.winner>=0?esc(pname(S.winner))+" の勝利！":"引き分け")+'</div><p>'+esc(S.winReason)+'。最終ゲージ：'+S.gauge+'／ターン数：先攻'+S.turnCount[0]+'・後攻'+S.turnCount[1]+'／背水の陣の発動：'+S.stats.haisui+'回／攻撃回数：'+S.stats.attacks+'回</p><p>対戦デッキ：先攻＝'+esc(deckName(0))+'、後攻＝'+esc(deckName(1))+'</p><p>よく使われたカード：'+ph+'</p><p>試遊メモと合わせて「試遊記録をダウンロード」すると、この対戦の振り返りをそのまま残せます。</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="new-game">もう一度対戦</button><button class="btn teal" data-act="download">試遊記録をダウンロード</button><button class="btn" data-act="back-title">タイトルに戻る</button></div></div></div>';
+}
+if(S.passGate){
+var who = S.passFor==="mulligan"? pname(S.mulliganTurn): pname(S.active);
+return '<div class="overlay"><div class="sheet"><h2>手番交代</h2><p>端末を <b>'+esc(who)+'</b> に渡してください。相手の手札は見えません。</p><button class="btn primary" data-act="pass-ok">準備ができたら表示する</button></div></div>';
+}
+var p=S.pending;
+if(p && p.kind==="haisui"){
+var by=p.by, btns="";
+if(cpuControls(by)){ btns='<p class="msg">CPUが背水の陣の行動を選んでいます…</p>';}
+else {
+["pushback","draw","points"].forEach(function(a){
+var taken=S.haisuiTaken[a]!==undefined;
+btns+='<button class="btn" '+(taken?"disabled":"")+' data-act="haisui" data-a="'+a+'">'+esc(HAISUI_DEFS[a].name)+(taken?"（相手が選択済み）":"")+"<small>"+esc(HAISUI_DEFS[a].desc)+"</small></button>";
+});
+}
+return '<div class="overlay"><div class="sheet"><h2>背水の陣 ― '+esc(pname(by))+'</h2><p>ゲージの残りが '+remainingFor(by)+' になったため、必須発動します（温存できません）。3つのうち1つを選んでください。先に選ばれた行動は相手は選べません。</p><div class="haisui-btns">'+btns+"</div></div></div>";
+}
+if(p && p.kind==="drawPick"){
+var body="";
+if(cpuControls(p.by)) body='<p class="msg">CPUが残すカードを選んでいます…</p>';
+else body='<p>引いた3枚の中から、手札に加えるカードをあと <b>'+p.left+'</b> 枚選んでください。選ばなかったカードは墓地に置かれます。</p><div class="pickgrid">'+p.pool.map(function(c){ return pickCardBtn(c,"pool-pick");}).join("")+"</div>";
+return '<div class="overlay"><div class="sheet"><h2>三兎追えば二兎得る ― '+esc(pname(p.by))+"</h2>"+body+"</div></div>";
+}
+if(p && p.kind==="deckDeploy"){
+var cands=deckDeployCandidates(p.by, p.maxCost), body2="";
+if(cpuControls(p.by)) body2='<p class="msg">CPUがデッキから出すユニットを選んでいます…</p>';
+else body2='<p>シャインマスカットの効果：デッキからコスト'+p.maxCost+'以下で守護を持つユニットを1枚選んで、コストを支払わずに場に出します。</p><div class="pickgrid">'+cands.map(function(c){ return pickCardBtn(c,"deck-deploy");}).join("")+"</div>";
+return '<div class="overlay"><div class="sheet"><h2>デッキから場に出す ― '+esc(pname(p.by))+"</h2>"+body2+"</div></div>";
+}
+if(p && p.kind==="masterCopy"){
+var by2=p.by, pl2=S.players[by2], ctx=S.masterCtx, src=ctx?findUnit(by2,ctx.sourceUid):null, body3="";
+if(cpuControls(by2) ||!src) body3='<p class="msg">CPUがコピーするユニットを選んでいます…</p>';
+else {
+var selfId=src.cardId;
+var fBtns=pl2.field.filter(function(u){ return u!==src && u.cardId!==selfId;}).map(function(u){ var d2=defOf(u); return '<button class="btn" data-act="copy-pick" data-zone="field" data-u="'+u.uid+'">'+esc(d2.name)+"（場／攻"+unitAtk(u)+"・体"+unitHp(u)+"/"+unitMaxHp(u)+")<small>"+esc(d2.text||"")+"</small></button>";}).join("");
+var gBtns=pl2.grave.filter(function(c){ return CARDS[c.cardId].type==="unit" && c.cardId!==selfId;}).map(function(c){ var d2=CARDS[c.cardId]; return '<button class="btn" data-act="copy-pick" data-zone="grave" data-u="'+c.uid+'">'+esc(d2.name)+"（墓地／コスト"+d2.cost+")<small>"+esc(d2.text||"")+"</small></button>";}).join("");
+var hBtns=pl2.hand.filter(function(c){ return CARDS[c.cardId].type==="unit" && c.cardId!==selfId;}).map(function(c){ var d2=CARDS[c.cardId]; return '<button class="btn" data-act="copy-pick" data-zone="hand" data-u="'+c.uid+'">'+esc(d2.name)+"（手札／コスト"+d2.cost+")<small>"+esc(d2.text||"")+"</small></button>";}).join("");
+body3='<p>選んだユニットはゲームから除外されます（破壊ではありません）。手練手管やーやはそのユニットの登場時効果を使い、能力を全てコピーします。自分自身と同名カードは選べません。</p>'
++(fBtns?'<div class="pickzone">自分の場</div><div class="picklist">'+fBtns+"</div>":"")
++(gBtns?'<div class="pickzone">自分の墓地</div><div class="picklist">'+gBtns+"</div>":"")
++(hBtns?'<div class="pickzone">自分の手札</div><div class="picklist">'+hBtns+"</div>":"");
+}
+return '<div class="overlay"><div class="sheet"><h2>手練手管やーやコピー対象 ― '+esc(pname(by2))+"</h2>"+body3+"</div></div>";
+}
+if(S.phase==="mulligan"){
+var mp=S.players[S.mulliganTurn];
+var cards=mp.hand.map(function(c){ var cd=CARDS[c.cardId]; return '<button type="button" class="ucard hcard" data-act="detail" data-kind="hand" data-p="'+S.mulliganTurn+'" data-u="'+c.uid+'"><span class="cost">'+cd.cost+'</span><span class="nm">'+esc(cd.name)+'</span><span class="tp">'+(cd.type==="unit"?"ユニット "+cd.atk+"/"+cd.hp:"戦術")+'</span><span class="more">タップで詳細</span></button>';}).join("");
+return '<div class="overlay"><div class="sheet"><h2>マリガン ― '+esc(pname(S.mulliganTurn))+'</h2><p>初期手札'+mp.hand.length+'枚（デッキ：'+esc(deckName(S.mulliganTurn))+'）。全部引き直すか、そのまま始めるか、一度だけ選べます。カードをタップすると詳細が見られます。'+(S.mulliganTurn===1?"（後攻補正：初期手札+1枚、最初のターンのポイント+1）":"")+'</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="btn primary" data-act="mulligan" data-v="0">この手札で始める</button><button class="btn" data-act="mulligan" data-v="1">全部引き直す</button></div><div class="handview">'+cards+"</div></div></div>";
+}
+return "";
+}
+function render(){
+if(IS_NODE ||!S) return;
+document.getElementById("modeCpu").className="btn small"+(S.mode==="cpu"?" seg-on":"");
+var mode2p=document.getElementById("mode2p"); if(mode2p) mode2p.className="btn small"+(S.mode==="2p"?" seg-on":"");
+document.getElementById("modeAuto").className="btn small"+(S.mode==="auto"?" seg-on":"");
+document.getElementById("gaugeMarker").style.left=((S.gauge+GAUGE_MAX)/(GAUGE_MAX*2)*100)+"%";
+document.getElementById("gaugeName0").textContent=pname(0);
+document.getElementById("gaugeName1").textContent=pname(1);
+document.getElementById("gaugeRem0").textContent=remainingFor(0);
+document.getElementById("gaugeRem1").textContent=remainingFor(1);
+var gp=document.getElementById("gaugePos");
+if(S.gauge===0) gp.textContent="ゲージ位置 0（互角）";
+else if(S.gauge>0) gp.textContent="ゲージ位置 +"+S.gauge+"（"+pname(0)+" が "+S.gauge+" 押されている）";
+else gp.textContent="ゲージ位置 "+S.gauge+"（"+pname(1)+" が "+(-S.gauge)+" 押されている）";
+var chips="";
+for(var pi=0;pi<2;pi++){
+var used=S.haisuiUsed[pi], takenAct=Object.keys(S.haisuiTaken).filter(function(a){ return S.haisuiTaken[a]===pi;})[0];
+chips+='<span class="chip'+(used?" used":(!used && remainingFor(pi)<=HAISUI_REMAIN?" hot":""))+'">背水の陣・'+esc(pname(pi))+"："+(used?"使用済（"+HAISUI_DEFS[takenAct].name+"）":(remainingFor(pi)<=HAISUI_REMAIN?"発動圏内（残り"+remainingFor(pi)+"）":"未使用"))+"</span>";
+}
+document.getElementById("haisuiChips").innerHTML=chips;
+var bottom = S.mode==="2p"? S.active: 0;
+document.getElementById("oppZone").innerHTML=zoneHTML(1-bottom,false);
+document.getElementById("myZone").innerHTML=zoneHTML(bottom,true);
+document.getElementById("promptArea").innerHTML=promptHTML();
+document.getElementById("turnBar").innerHTML=turnbarHTML();
+var lb=document.getElementById("logBox");
+lb.innerHTML=S.log.map(function(e){ return '<div><span class="lt">T'+e.turn+"</span>"+(e.who?esc(e.who)+"：":"")+esc(e.text)+"</div>";}).join("");
+lb.scrollTop=lb.scrollHeight;
+document.getElementById("overlayRoot").innerHTML=overlayHTML();
+renderDetail();
+poke();
+}
+
+/* ---------- ボタン用ラッパー ---------- */
+function attackFaceBtn(){ var u=findUnit(S.active, S.selected); if(u) initiateFace(u);}
+function deselectBtn(){ S.selected=null; S.abilityMenu=false; render();}
+function abilityMenuBtn(){ S.abilityMenu=true; render();}
+function abilityBtn(n){ var u=findUnit(S.active, S.selected); if(u) useSuperAbility(n, u);}
+function endTurnBtn(){ endTurn();}
+function newGameBtn(){ newGame(S.mode);}
+
+/* ---------- デッキリスト＆ルール整理 ---------- */
+function deckTableHTML(recipe){
+var rows="", uCount=0, tCount=0, total=0;
+recipe.forEach(function(r){
+var d=CARDS[r[0]]; total+=r[1]; if(d.type==="unit") uCount+=r[1]; else tCount+=r[1];
+rows+="<tr><td><b>"+esc(d.name)+'</b></td><td class="c">×'+r[1]+'</td><td class="c">'+(d.type==="unit"?"ユニット":"戦術")+'</td><td class="c">'+d.cost+'</td><td class="c">'+(d.type==="unit"?d.atk+" / "+d.hp:"―")+'</td><td class="c">'+esc((d.traits||[]).join("・")||"―")+(d.allTraits?"（＋全特徴）":"")+'</td><td class="fxcell">'+esc(d.text||"")+"</td></tr>";
+});
+rows+='<tr><td><b>合計</b></td><td class="c"><b>'+total+'枚</b></td><td class="c" colspan="5">ユニット '+uCount+"枚 ／ 戦術 "+tCount+"枚</td></tr>";
+return '<table class="decktable"><thead><tr><th>カード名</th><th class="c">枚数</th><th class="c">種別</th><th class="c">コスト</th><th class="c">攻/体</th><th class="c">特徴</th><th>効果</th></tr></thead><tbody>'+rows+"</tbody></table>";
+}
+function renderDocs(){
+var dl="";
+DECKS.forEach(function(dk, i){
+dl+="<h3>デッキ"+(i+1)+" ― "+esc(dk.name)+"「"+esc(dk.sub)+"」（40枚）</h3>"+deckTableHTML(dk.recipe);
+});
+document.getElementById("deckLists").innerHTML=dl;
+var rows="";
+ALL_CARD_ORDER.forEach(function(id){
+var d=CARDS[id];
+var inDecks=[]; DECKS.forEach(function(dk,i){ dk.recipe.forEach(function(r){ if(r[0]===id) inDecks.push("デッキ"+(i+1)+"×"+r[1]);});});
+rows+="<tr><td><b>"+esc(d.name)+'</b></td><td class="c">'+(d.type==="unit"?"ユニット":"戦術")+'</td><td class="c">'+d.cost+'</td><td class="c">'+(d.type==="unit"?d.atk+" / "+d.hp:"―")+'</td><td class="c">'+esc((d.traits||[]).join("・")||"―")+(d.allTraits?"（＋全特徴）":"")+'</td><td class="c">'+(inDecks.join("、")||"構築済みデッキには入っていない")+'</td><td class="fxcell">'+esc(d.text||"")+"</td></tr>";
+});
+document.getElementById("allCards").innerHTML='<table class="decktable"><thead><tr><th>カード名</th><th class="c">種別</th><th class="c">コスト</th><th class="c">攻/体</th><th class="c">特徴</th><th class="c">収録デッキ</th><th>効果</th></tr></thead><tbody>'+rows+"</tbody></table>";
+document.getElementById("rulesDoc").innerHTML=
+"<h3>勝利条件 ― 戦線ゲージ</h3><ul>"
++"<li>ゲージは −15〜+15 の押し合い。自分の攻撃で相手側の端まで押し切ったら勝ち。</li>"
++"<li>プレイヤーへの攻撃は、実効攻撃力の分だけゲージが動く（一番効率のいい押し方）。</li>"
++"<li>ユニット同士の戦闘で倒すと、倒したユニットのコストの半分（切り捨て・最低1）だけゲージが動く。相打ちは両方向の差分だけ動く。</li>"
++"<li>効果（ダメージ・破壊など）で倒した場合はゲージは動かない。</li>"
++"<li>デッキ切れでカードを引けなくなったら負け。</li></ul>"
++"<h3>ポイント（リソース）</h3><ul>"
++"<li>最初のターンは基本2ポイント。自分のターンごとに基本ポイントが+1される（上限なし）。</li>"
++"<li>使い残しの半分（切り捨て）が次のターンに繰り越される。</li>"
++"<li>基本ポイントを増やす効果（やーや／最前線攻略tv⁉︎）は、次の自分のターンから効く。</li></ul>"
++"<h3>デッキと手札</h3><ul>"
++"<li>デッキ40枚、同名カードは3枚まで。初期手札は先攻5枚・後攻6枚（後攻補正）。</li>"
++"<li>マリガンは「全部引き直すか、そのままか」を一度だけ選べる。</li>"
++"<li>毎ターン開始時に1枚引く。手札上限は10枚（自分のターン終了時に超えていたら捨てる）。</li>"
++"<li>場に出せるユニットは5体まで。</li></ul>"
++"<h3>攻撃と戦闘</h3><ul>"
++"<li>攻撃先は自由（プレイヤー or ユニット）。出したターンは攻撃できない（速攻・先手必勝を除く）。ブロックはない。</li>"
++"<li>ユニット同士はお互いの攻撃力分を食らい合う（反撃あり）。ダメージはターンが終わっても残る。</li>"
++"<li>ゲーマーにあくろが場にいる間、相手ユニットの「攻撃する時」の攻撃力は-1される（反撃には効かない。複数いれば重なる）。</li></ul>"
++"<h3>キーワード能力</h3><ul>"
++"<li><b>速攻</b> ― 出たターンでも攻撃できる。</li>"
++"<li><b>先手必勝</b> ― 出たターンでも、相手のユニットを攻撃できる（プレイヤーへの攻撃はできない）。</li>"
++"<li><b>守護</b> ― 相手は守護を持つユニットしか攻撃できない（顔も、守護でないユニットも攻撃できない）。守護が複数いれば、その中から選ぶ。効果の対象には影響しない。ゲーマーマスカットが付与した守護も同じ働きをし、成熟／シャインマスカットのオーラは「守護を持つユニット」に数える。</li>"
++"<li><b>連携○：特徴</b> ― 自分の場に「自分以外の」その特徴を持つユニットがいる間、攻撃力が○上がる。条件を満たすユニットが何体いてもボーナスは1回だけ。効果で付与された連携は、もともと持っている連携と重なる（例：連携2持ちに連携1が付くと連携3）。反撃の攻撃力にも連携は乗る。</li></ul>"
++"<h3>背水の陣</h3><ul>"
++"<li>攻撃でゲージの残りが5以下になった瞬間に必須発動（温存できない）。各プレイヤー、ゲーム中に1回だけ。</li>"
++"<li>次の3つから1つ選ぶ：(1) ゲージを3押し戻す (2) カードを4枚引く (3) 次の自分のターンのポイント+3。</li>"
++"<li>先に選ばれた行動は、相手は選べない（封じ合い）。</li>"
++"<li>背水の陣が未使用のプレイヤーは、一撃で端まで押し切られても「残り1」で止まる。ただし専用のフィニッシャーカードだけはこの保護を貫通できる（現在の構築済みデッキにフィニッシャーはいない）。</li></ul>"
++"<h3>先攻・後攻</h3><ul><li>後攻補正：後攻は初期手札+1枚、最初のターンのポイント+1。</li></ul>"
++"<h3>カード固有の処理</h3><ul>"
++"<li>表向きの手札（みにあくろ／超絶自己中にあくろ）は両プレイヤーから見える。にあくろの登場時効果では、表向きのカードは中身を見て狙って捨てられる。超絶自己中にあくろが場を離れると、個別に表向きにされたカード以外は裏向きに戻る。</li>"
++"<li>爆速退社ニトグリは攻撃した後、手札に戻る（ダメージや強化はリセットされる）。ただし酒！酒！酒！をかけられていた場合は「攻撃後に破壊」が優先され、手札には戻らない。</li>"
++"<li>猫被りにあくろの回復は、ダメージを受けた味方がいない時は発動しない（対象を選ぶ場面にならない）。</li>"
++"<li>ミルキーは破壊された時にもカードを2枚引く。ゲーマーミルキーは自分のターン開始時にも1枚引く（効果ドローとして数える）。</li>"
++"<li>無数の選択肢ミルキーの攻/体は「この試合で効果で引いたカードの枚数÷2（切り捨て）」。通常のターンドローやサーチでは増えない。登場時のドロー2枚も数えるので、最低でも1/1で出る。</li>"
++"<li>シャインマスカットが破壊されたら、デッキから守護を持つコスト5以下のユニットを1枚選んで無料で場に出せる（出したユニットの登場時効果も発動する）。</li>"
++"<li>器用富豪やーや／手練手管やーやの攻撃時の選択は、攻撃する前に選んで解決してから攻撃する。ダメージ効果で攻撃対象が場を離れた場合、その攻撃は不発になり攻撃回数は消費しない。</li>"
++"<li>手練手管やーやの効果④で場のユニットを除外しても「破壊」ではないので、破壊された時の効果は発動せず、ゲージも動かない。コピーはオーラ等の常駐効果も含めて全て。手練手管やーや自身と同名カードは対象にできない。</li>"
++"<li>秩序なき連携ニトグリのオーラで体力の最大値が尽きたユニットは、その場で墓地に置かれる（効果で倒れた扱いで、ゲージは動かない）。</li>"
++"<li>ゲーマーやーやの自己強化とポイント+2は、登場時に自分の基本ポイントが8以上でのみ発動する。手練手管やーやが2つ効果を使えるのは基本ポイント10以上の時。</li></ul>";
+}
+
+/* ---------- 試遊記録 ---------- */
+function buildRecord(){
+var L=[];
+L.push("なんかいい感じのTCG（予定）― ブラウザ試遊版");
+L.push("日時："+new Date().toLocaleString("ja-JP"));
+L.push("形式："+(S.mode==="cpu"?"CPU戦":S.mode==="auto"?"CPU同士（観戦）":"2人対戦（同じ端末）"));
+L.push("デッキ：先攻＝"+deckName(0)+"「"+deckSub(0)+"」／後攻＝"+deckName(1)+"「"+deckSub(1)+"」");
+if(S.over) L.push("結果："+(S.winner>=0?pname(S.winner)+" の勝利":"引き分け")+"（"+S.winReason+"）");
+else L.push("結果：対戦中（全体"+S.globalTurn+"ターン目）");
+L.push("最終ゲージ："+S.gauge+" ／ ターン数：先攻"+S.turnCount[0]+"・後攻"+S.turnCount[1]+" ／ 背水の陣発動："+S.stats.haisui+"回 ／ 攻撃回数："+S.stats.attacks+"回");
+L.push(""); L.push("■ カード使用回数");
+var plays=Object.keys(S.stats.plays).map(function(k){ return [k,S.stats.plays[k]];}).sort(function(a,b){ return b[1]-a[1];});
+if(plays.length) plays.forEach(function(x){ L.push("・"+x[0]+"："+x[1]+"回");}); else L.push("（まだカードを使っていない）");
+L.push(""); L.push("■ 評価");
+L.push("試合の長さ："+(document.getElementById("rateLength").value||"未評価"));
+L.push("ゲージの動き："+(document.getElementById("rateGauge").value||"未評価"));
+L.push("背水の陣："+(document.getElementById("rateHaisui").value||"未評価"));
+L.push(""); L.push("■ 試遊メモ");
+L.push(document.getElementById("memo").value||"（メモなし）");
+L.push(""); L.push("■ 対戦ログ");
+S.log.forEach(function(e){ L.push("[T"+e.turn+"] "+(e.who?e.who+"：":"")+e.text);});
+return L.join("\n");
+}
+function downloadRecord(){
+var blob=new Blob([buildRecord()], {type:"text/plain;charset=utf-8"});
+var a=document.createElement("a");
+a.href=URL.createObjectURL(blob); a.download="shiyu-record.txt";
+document.body.appendChild(a); a.click();
+setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove();},400);
+}
+function copyRecord(){
+var msg=document.getElementById("copyMsg");
+if(navigator.clipboard && navigator.clipboard.writeText){
+navigator.clipboard.writeText(buildRecord()).then(function(){ msg.textContent="試遊記録をコピーしました。";}, function(){ msg.textContent="コピーできませんでした。ダウンロードを使ってください。";});
+} else msg.textContent="この環境ではコピーできません。ダウンロードを使ってください。";
+}
+
+/* ---------- カスタムデッキ保存（localStorage） ---------- */
+var CUSTOM_KEY="nankaTcgCustomDecksV1", SLOT_COUNT=5;
+function emptySlots(){ var a=[]; for(var i=0;i<SLOT_COUNT;i++) a.push(null); return a;}
+function loadCustomSlots(){
+try{
+var raw=localStorage.getItem(CUSTOM_KEY); if(!raw) return emptySlots();
+var arr=JSON.parse(raw), out=emptySlots();
+for(var i=0;i<SLOT_COUNT;i++){ if(arr[i] && arr[i].name && Array.isArray(arr[i].recipe)) out[i]={name:String(arr[i].name), recipe:arr[i].recipe};}
+return out;
+}catch(e){ return emptySlots();}
+}
+function saveCustomSlots(slots){ try{ localStorage.setItem(CUSTOM_KEY, JSON.stringify(slots));}catch(e){} }
+function validateRecipe(recipe){
+var total=0, problems=[];
+if(!Array.isArray(recipe)) return {ok:false, total:0, problems:["デッキデータが不正です"]};
+recipe.forEach(function(r){
+if(!CARDS[r[0]]){ problems.push("不明なカードが含まれています"); return;}
+total+=r[1];
+if(r[1]>3) problems.push(CARDS[r[0]].name+" が "+r[1]+" 枚（同名は3枚まで）");
+if(r[1]<1) problems.push(CARDS[r[0]].name+" の枚数が不正です");
+});
+if(total!==40) problems.push("合計 "+total+" 枚（ちょうど40枚必要です）");
+return {ok:problems.length===0, total:total, problems:problems};
+}
+function deckDefByKey(key){
+if(!key) return null;
+if(key.charAt(0)==="b"){ var i=parseInt(key.slice(1),10); return DECKS[i]||null;}
+if(key.charAt(0)==="c"){
+var s=loadCustomSlots()[parseInt(key.slice(1),10)];
+if(s && validateRecipe(s.recipe).ok) return {name:s.name, sub:"カスタムデッキ", recipe:s.recipe};
+return null;
+}
+return null;
+}
+function refreshDeckSelects(){
+[0,1].forEach(function(p){
+var sel=document.getElementById("deckSel"+p); if(!sel) return;
+var prev=sel.value;
+sel.innerHTML="";
+DECKS.forEach(function(dk,i){ var o=document.createElement("option"); o.value="b"+i; o.textContent=dk.name+"「"+dk.sub+"」（構築済み）"; sel.appendChild(o);});
+var slots=loadCustomSlots();
+slots.forEach(function(s,i){
+if(s && validateRecipe(s.recipe).ok){ var o=document.createElement("option"); o.value="c"+i; o.textContent=s.name+"（カスタム）"; sel.appendChild(o);}
+});
+sel.value = deckDefByKey(prev)? prev: "b0";
+});
+}
+
+/* ---------- 画面遷移 ---------- */
+var VIEW="title", SETUP_MODE="cpu";
+function showView(name){
+VIEW=name;
+["titleView","setupView","builderView","battleView","docsView","roomView"].forEach(function(id){
+var el=document.getElementById(id); if(el) el.classList.toggle("hidden", id!==name+"View");
+});
+window.scrollTo(0,0);
+}
+function goTitle(){
+if(_cpuTimer){ clearTimeout(_cpuTimer); _cpuTimer=null;}
+S=null; DETAIL=null;
+var or=document.getElementById("overlayRoot"); if(or) or.innerHTML="";
+var dr=document.getElementById("detailRoot"); if(dr) dr.innerHTML="";
+showView("title");
+}
+function updateSetupUI(){
+var map={cpu:"modeCpu","2p":"mode2p",auto:"modeAuto"};
+Object.keys(map).forEach(function(m){ var el=document.getElementById(map[m]); if(el) el.className="btn small"+(SETUP_MODE===m?" seg-on":"");});
+var titles={cpu:"対戦設定 ― CPU戦", "2p":"対戦設定 ― 2人対戦（パス＆プレイ）", auto:"対戦設定 ― CPU同士の観戦"};
+var notes={
+cpu:"あなたが先攻、CPUが後攻です。使うデッキを選んで「対戦開始」を押してください。",
+"2p":"同じ端末を渡し合って対戦します。先攻・後攻それぞれのデッキを選んでください。",
+auto:"CPU同士が自動で対戦します。先攻・後攻それぞれのデッキを選んでください。"
+};
+document.getElementById("setupTitle").textContent=titles[SETUP_MODE]||"対戦設定";
+document.getElementById("setupNote").textContent=notes[SETUP_MODE]||"";
+}
+
+/* ---------- デッキ編成 ---------- */
+var BUILDER={slot:0, counts:{}, msg:"", msgOk:false};
+function builderTotal(){ var t=0; Object.keys(BUILDER.counts).forEach(function(k){ t+=BUILDER.counts[k];}); return t;}
+function builderRecipe(){ var r=[]; ALL_CARD_ORDER.forEach(function(id){ if(BUILDER.counts[id]>0) r.push([id, BUILDER.counts[id]]);}); return r;}
+function countsFromRecipe(recipe){ var c={}; (recipe||[]).forEach(function(r){ if(CARDS[r[0]]) c[r[0]]=r[1];}); return c;}
+function loadBuilderSlot(i){
+BUILDER.slot=i; BUILDER.msg="";
+var s=loadCustomSlots()[i];
+BUILDER.counts = s? countsFromRecipe(s.recipe): {};
+document.getElementById("builderName").value = s? s.name: "";
+renderBuilder();
+}
+function poolCardHTML(id){
+var d=CARDS[id], n=BUILDER.counts[id]||0;
+return '<div class="pool-card'+(n>0?" in-deck":"")+'" data-act="builder-add" data-id="'+id+'" role="button" aria-label="'+esc(d.name)+' を追加">'
++'<span class="cost">'+d.cost+'</span>'
++'<div class="pc-name">'+esc(d.name)+'</div>'
++'<div class="pc-meta">'+(d.type==="unit"? "ユニット "+d.atk+"/"+d.hp+" ／ "+esc((d.traits||[]).join("・")||"特徴なし")+(d.allTraits?"・全特徴":""): "戦術")+'</div>'
++'<div class="pc-fx">'+esc(d.text||"")+'</div>'
++'<div class="pc-foot"><span class="pc-count">'+n+' / 3枚</span><span class="pc-btns">'
++'<button type="button" class="btn small" data-act="builder-remove" data-id="'+id+'"'+(n===0?" disabled":"")+'>−</button>'
++'<button type="button" class="btn small" data-act="builder-add" data-id="'+id+'"'+(n>=3?" disabled":"")+'>＋</button>'
++"</span></div></div>";
+}
+function renderBuilder(){
+if(IS_NODE) return;
+var slots=loadCustomSlots();
+var tabs="";
+for(var i=0;i<SLOT_COUNT;i++){
+var s=slots[i];
+tabs+='<button class="btn small'+(BUILDER.slot===i?" seg-on":"")+'" data-act="builder-slot" data-n="'+i+'">枠'+(i+1)+"："+(s? esc(s.name): "（空き）")+"</button>";
+}
+document.getElementById("slotTabs").innerHTML=tabs;
+document.getElementById("poolGrid").innerHTML=ALL_CARD_ORDER.map(poolCardHTML).join("");
+var total=builderTotal();
+document.getElementById("builderTotal").textContent=total+" / 40枚";
+var v=validateRecipe(builderRecipe());
+var list="";
+ALL_CARD_ORDER.forEach(function(id){
+var n=BUILDER.counts[id]||0; if(n<=0) return;
+var d=CARDS[id];
+list+='<div class="bl-row"><span><b>'+esc(d.name)+'</b> <span style="color:var(--ink-soft)">コスト'+d.cost+'</span></span><span>×'+n+' <button type="button" class="btn small" data-act="builder-remove" data-id="'+id+'">−</button></span></div>';
+});
+document.getElementById("builderList").innerHTML= list|| '<p class="builder-empty">まだカードが入っていません。左のカードプールからタップして追加してください。</p>';
+var msgEl=document.getElementById("builderMsg");
+if(BUILDER.msg){ msgEl.textContent=BUILDER.msg; msgEl.className="builder-msg "+(BUILDER.msgOk?"ok":"err");}
+else if(!v.ok){ msgEl.textContent="保存できません："+v.problems.join("／"); msgEl.className="builder-msg err";}
+else { msgEl.textContent="40枚そろいました。「この枠に保存」を押すと対戦で使えます。"; msgEl.className="builder-msg ok";}
+document.getElementById("builderSave").disabled=!v.ok;
+}
+function builderAdd(id){
+if(!CARDS[id]) return;
+var n=BUILDER.counts[id]||0;
+if(n>=3){ BUILDER.msg=CARDS[id].name+" は3枚までです。"; BUILDER.msgOk=false; renderBuilder(); return;}
+if(builderTotal()>=40){ BUILDER.msg="合計40枚に達しています。先に他のカードを外してください。"; BUILDER.msgOk=false; renderBuilder(); return;}
+BUILDER.counts[id]=n+1; BUILDER.msg=""; renderBuilder();
+}
+function builderRemove(id){
+var n=BUILDER.counts[id]||0; if(n<=0) return;
+BUILDER.counts[id]=n-1; if(BUILDER.counts[id]<=0) delete BUILDER.counts[id];
+BUILDER.msg=""; renderBuilder();
+}
+function builderSave(){
+var v=validateRecipe(builderRecipe());
+if(!v.ok){ BUILDER.msg="保存できません："+v.problems.join("／"); BUILDER.msgOk=false; renderBuilder(); return;}
+var name=document.getElementById("builderName").value.trim()||("カスタムデッキ"+(BUILDER.slot+1));
+var slots=loadCustomSlots();
+slots[BUILDER.slot]={name:name, recipe:builderRecipe()};
+saveCustomSlots(slots);
+document.getElementById("builderName").value=name;
+BUILDER.msg="枠"+(BUILDER.slot+1)+" に「"+name+"」を保存しました。対戦設定のデッキ選択に並んでいます。";
+BUILDER.msgOk=true;
+refreshDeckSelects(); renderBuilder();
+}
+function builderDelete(){
+var slots=loadCustomSlots();
+if(!slots[BUILDER.slot]){ BUILDER.msg="この枠はすでに空です。"; BUILDER.msgOk=false; renderBuilder(); return;}
+slots[BUILDER.slot]=null; saveCustomSlots(slots);
+BUILDER.counts={}; document.getElementById("builderName").value="";
+BUILDER.msg="枠"+(BUILDER.slot+1)+" のデッキを削除しました。"; BUILDER.msgOk=true;
+refreshDeckSelects(); renderBuilder();
+}
+function builderCopy(){
+var sel=document.getElementById("copyFrom");
+var i=sel? parseInt(sel.value,10): 0;
+if(!DECKS[i]) return;
+BUILDER.counts=countsFromRecipe(DECKS[i].recipe);
+document.getElementById("builderName").value=DECKS[i].name+"・改";
+BUILDER.msg=DECKS[i].name+" を土台に読み込みました。入れ替えて保存してください。";
+BUILDER.msgOk=true; renderBuilder();
+}
+
+/* ---------- 初期化 ---------- */
+function selectedDeckDef(p){
+var sel=document.getElementById("deckSel"+p);
+var key=sel? sel.value: "b0";
+return deckDefByKey(key)||DECKS[0];
+}
+function newGame(mode){
+if(_cpuTimer){ clearTimeout(_cpuTimer); _cpuTimer=null;}
+var d0=IS_NODE?DECKS[0]:selectedDeckDef(0), d1=IS_NODE?DECKS[1]:selectedDeckDef(1);
+S=newState(mode||"cpu", d0, d1);
+DETAIL=null;
+log(null,"対戦準備：先攻＝"+deckName(0)+"、後攻＝"+deckName(1)+"（各40枚）。マリガンから開始");
+if(S.mode==="auto"){
+cpuMulligan(0); cpuMulligan(1);
+S.mulliganTurn=1; S.phase="play";
+startTurn();
+return;
+}
+render();
+}
+if(!IS_NODE) (function init(){
+var ticks=""; for(var i=0;i<30;i++) ticks+="<i></i>";
+document.getElementById("gaugeTicks").innerHTML=ticks;
+refreshDeckSelects();
+var cf=document.getElementById("copyFrom");
+DECKS.forEach(function(dk,i){ var o=document.createElement("option"); o.value=i; o.textContent=dk.name+"「"+dk.sub+"」"; cf.appendChild(o);});
+document.getElementById("newGame").addEventListener("click", function(){ newGame(S?S.mode:"cpu");});
+document.getElementById("dlRecord").addEventListener("click", downloadRecord);
+document.getElementById("copyRecord").addEventListener("click", copyRecord);
+/* 対戦中の全操作は data-act 属性＋イベント委譲で処理する（属性型ハンドラは使わない）。 */
+document.addEventListener("click", function(e){
+var t=e.target;
+while(t && t!==document &&!(t.getAttribute && t.getAttribute("data-act"))) t=t.parentNode;
+if(!t || t===document) return;
+if(t.disabled) return;
+var act=t.getAttribute("data-act");
+if(act==="backdrop"){ if(e.target===t) closeDetail();}
+else if(act==="detail") openCardDetail(t.getAttribute("data-kind"), parseInt(t.getAttribute("data-p"),10), parseInt(t.getAttribute("data-u"),10));
+else if(act==="detail-act") detailAct();
+else if(act==="detail-close") closeDetail();
+else if(act==="attack-face") attackFaceBtn();
+else if(act==="ability-menu") abilityMenuBtn();
+else if(act==="ability") abilityBtn(parseInt(t.getAttribute("data-n"),10));
+else if(act==="deselect") deselectBtn();
+else if(act==="end-turn") endTurnBtn();
+else if(act==="new-game") newGameBtn();
+else if(act==="download") downloadRecord();
+else if(act==="pass-ok") passGateOk();
+else if(act==="haisui") chooseHaisui(t.getAttribute("data-a"));
+else if(act==="mulligan") doMulligan(t.getAttribute("data-v")==="1");
+else if(act==="rich-mode"){ if(chooseRichMode(parseInt(t.getAttribute("data-n"),10))) render();}
+else if(act==="master-mode"){ if(chooseMasterMode(parseInt(t.getAttribute("data-n"),10))) render();}
+else if(act==="pool-pick"){ if(chooseDrawPick(parseInt(t.getAttribute("data-u"),10))) render();}
+else if(act==="deck-deploy"){ if(chooseDeckDeploy(parseInt(t.getAttribute("data-u"),10))) render();}
+else if(act==="copy-pick"){ if(chooseMasterCopy(t.getAttribute("data-zone"), parseInt(t.getAttribute("data-u"),10))) render();}
+else if(act==="nav-setup"){ SETUP_MODE=t.getAttribute("data-mode")||"cpu"; refreshDeckSelects(); updateSetupUI(); showView("setup");}
+else if(act==="setup-mode"){ SETUP_MODE=t.getAttribute("data-mode")||"cpu"; updateSetupUI();}
+else if(act==="nav-builder"){ loadBuilderSlot(BUILDER.slot); showView("builder");}
+else if(act==="nav-docs"){ showView("docs");}
+else if(act==="back-title"){ goTitle();}
+else if(act==="start-battle"){ showView("battle"); newGame(SETUP_MODE);}
+else if(act==="builder-slot"){ loadBuilderSlot(parseInt(t.getAttribute("data-n"),10));}
+else if(act==="builder-add"){ builderAdd(t.getAttribute("data-id"));}
+else if(act==="builder-remove"){ builderRemove(t.getAttribute("data-id"));}
+else if(act==="builder-save"){ builderSave();}
+else if(act==="builder-delete"){ builderDelete();}
+else if(act==="builder-clear"){ BUILDER.counts={}; BUILDER.msg=""; renderBuilder();}
+else if(act==="builder-copy"){ builderCopy();}
+});
+document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeDetail();});
+renderDocs();
+updateSetupUI();
+loadBuilderSlot(0);
+showView("title");
 })();
 </script>
+<script src="/room.js"></script>
+</body>
+</html>

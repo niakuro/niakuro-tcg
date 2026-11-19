@@ -66,8 +66,23 @@ public sealed class RoomManager
                 "attackUnit" => ParseAttack(value, room.Engine, index, out var a, out var d) && room.Engine.AttackUnit(a!, d!),
                 "endTurn" => room.Engine.EndTurn(),
                 "haisui" => Enum.TryParse<HaisuiAction>(value, out var choice) && room.Engine.ChooseHaisui(choice),
+                "discard" => Guid.TryParse(value, out var discardId) && room.Engine.DiscardFromHand(discardId),
+                "chooseDiscard" => Guid.TryParse(value, out var chosenDiscardId) && room.Engine.ChooseCardToDiscard(chosenDiscardId),
+                "chooseSelfish" => Guid.TryParse(value, out var selfishId) && room.Engine.ChooseSelfishDiscard(selfishId),
+                "chooseDamage" => Guid.TryParse(value, out var damageId) && room.Engine.ChooseDamageTarget(damageId),
+                "chooseHeal" => Guid.TryParse(value, out var healId) && room.Engine.ChooseHealTarget(healId),
+                "chooseBuff" => Guid.TryParse(value, out var buffId) && room.Engine.ChooseBuffTarget(buffId),
+                "chooseOwnBuff" => Guid.TryParse(value, out var ownBuffId) && room.Engine.ChooseOwnBuffTarget(ownBuffId),
+                "chooseGuard" => Guid.TryParse(value, out var guardId) && room.Engine.ChooseGuardTarget(FindUnit(room.Engine, index, guardId)),
+                "chooseDeploy" => Guid.TryParse(value, out var deployId) && room.Engine.ChooseFreeDeploy(deployId),
+                "chooseDeckDeploy" => Guid.TryParse(value, out var deckDeployId) && room.Engine.ChooseDeckDeploy(deckDeployId),
+                "chooseDrawPick" => Guid.TryParse(value, out var drawPickId) && room.Engine.ChooseDrawPick(drawPickId),
+                "richMode" => int.TryParse(value, out var richMode) && room.Engine.ChooseRichMode(richMode),
+                "masterMode" => int.TryParse(value, out var masterMode) && room.Engine.ChooseMasterMode(masterMode),
+                "masterCopy" => ParseMasterCopy(value, room.Engine),
                 _ => false
             };
+            if (success && action == "endTurn") room.Engine.StartTurn();
             return success ? OperationResult.Ok(code) : OperationResult.Fail("その行動は今実行できません。");
         }
     }
@@ -82,7 +97,7 @@ public sealed class RoomManager
             {
                 object state = room.Started && room.Engine != null
                     ? BuildGameState(room, i)
-                    : new { room.Code, started = false, players = room.Players.Select(p => new { p.Name, p.DeckId }).ToArray() };
+                    : new { room.Code, started = false, viewerIndex = i, players = room.Players.Select(p => new { p.Name, p.DeckId }).ToArray() };
                 result[room.Players[i].ConnectionId] = new ViewerState(room.Players[i].ConnectionId, state);
             }
             return result;
@@ -112,6 +127,10 @@ public sealed class RoomManager
         {
             room.Code,
             started = true,
+            viewerIndex = viewer,
+            myName = room.Players[viewer].Name,
+            opponentName = room.Players[1 - viewer].Name,
+            players = room.Players.Select(p => new { p.Name, p.DeckId }).ToArray(),
             isMyTurn = engine.ActivePlayerIndex == viewer,
             gameOver = engine.IsGameOver,
             winnerIndex = engine.WinnerIndex,
@@ -120,13 +139,36 @@ public sealed class RoomManager
             globalTurn = engine.GlobalTurn,
             pendingHaisui = engine.PendingHaisuiPlayer,
             waitingDiscard = engine.WaitingDiscard,
-            me = ViewPlayer(me, engine),
-            opponent = ViewOpponent(opp, engine)
+            pendingDiscardBy = engine.PendingDiscardByPlayer,
+            pendingDiscardTarget = engine.PendingDiscardTargetPlayer,
+            pendingSelfishBy = engine.PendingSelfishByPlayer,
+            pendingHealBy = engine.PendingHealByPlayer,
+            pendingDamageBy = engine.PendingDamageByPlayer,
+            pendingBuffBy = engine.PendingBuffByPlayer,
+            pendingOwnBuffBy = engine.PendingOwnBuffByPlayer,
+            pendingGuardBy = engine.PendingGuardGrantByPlayer,
+            pendingDeployBy = engine.PendingDeployByPlayer,
+            pendingDeckDeployBy = engine.PendingDeckDeployByPlayer,
+            pendingDrawPickBy = engine.PendingDrawPickByPlayer,
+            pendingRichBy = engine.PendingRichChoiceByPlayer,
+            pendingMasterBy = engine.PendingMasterChoiceByPlayer,
+            pendingDrawPool = engine.PendingDrawPickByPlayer == viewer
+                ? engine.PendingDrawPool.Select(c => ViewCard(c)).ToArray()
+                : Array.Empty<object>(),
+            haisuiUsed = new[] { engine.Haisui.HasUsed(0), engine.Haisui.HasUsed(1) },
+            haisuiActionsTaken = new[] {
+                engine.Haisui.IsActionTaken(HaisuiAction.PushBack),
+                engine.Haisui.IsActionTaken(HaisuiAction.DrawCards),
+                engine.Haisui.IsActionTaken(HaisuiAction.NextTurnPoints)
+            },
+            me = ViewPlayer(me, engine, room.Players[viewer].DeckId),
+            opponent = ViewOpponent(opp, engine, room.Players[1 - viewer].DeckId)
         };
     }
 
-    private static object ViewPlayer(PlayerState p, GameEngine engine) => new
+    private static object ViewPlayer(PlayerState p, GameEngine engine, string deckId) => new
     {
+        deckId,
         hand = p.Hand.Select(c => ViewCard(c)).ToArray(),
         field = p.Field.Select(u => ViewUnit(u, engine)).ToArray(),
         graveyardCount = p.Graveyard.Count,
@@ -136,9 +178,13 @@ public sealed class RoomManager
         mulliganUsed = p.HasUsedMulligan
     };
 
-    private static object ViewOpponent(PlayerState p, GameEngine engine) => new
+    private static object ViewOpponent(PlayerState p, GameEngine engine, string deckId) => new
     {
+        deckId,
         handCount = p.Hand.Count,
+        hand = p.Hand.Select(c => engine.IsHandCardRevealed(p.Index, c)
+            ? ViewCard(c)
+            : (object)new { c.InstanceId, name = (string?)null, cost = (int?)null, type = (string?)null, hidden = true }).ToArray(),
         revealedCards = p.Hand.Where(c => engine.IsHandCardRevealed(p.Index, c)).Select(c => ViewCard(c)).ToArray(),
         field = p.Field.Select(u => ViewUnit(u, engine)).ToArray(),
         graveyardCount = p.Graveyard.Count,
@@ -150,6 +196,7 @@ public sealed class RoomManager
     {
         instanceId = u.Instance.InstanceId,
         name = u.Definition.Name,
+        cost = u.Definition.Cost,
         attack = engine.EffectiveAttackWhenAttacking(u),
         currentHealth = u.CurrentHealth,
         maxHealth = u.MaxHealth,
@@ -169,6 +216,15 @@ public sealed class RoomManager
         attacker = engine.Players[index].Field.FirstOrDefault(u => u.Instance.InstanceId == aid);
         defender = engine.Players[1 - index].Field.FirstOrDefault(u => u.Instance.InstanceId == did);
         return attacker != null && defender != null;
+    }
+
+    private static bool ParseMasterCopy(string value, GameEngine engine)
+    {
+        var parts = value.Split('|');
+        return parts.Length == 2
+            && Enum.TryParse<MasterCopyZone>(parts[0], out var zone)
+            && Guid.TryParse(parts[1], out var id)
+            && engine.ChooseMasterCopyTarget(zone, id);
     }
 
     private static string GenerateCode()
