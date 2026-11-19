@@ -1,0 +1,1353 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>なんかいい感じのTCG（予定） ― ブラウザ試遊版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Shippori+Mincho:wght@700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+color-scheme: light dark;
+--bg:#f2efe6; --bg2:#e9e4d4; --panel:#fbf9f2; --card:#fffdf6; --card-back:#3d4a43;
+--ink:#20261f; --ink-soft:#5a6152; --line:#d5cdb6; --line-strong:#b3a888;
+--accent:#c73e1d; --accent-ink:#fff7f0; --teal:#0e6e5c; --teal-soft:#dcebe2;
+--gold:#a97b12; --danger:#b3261e; --ok:#2e7d32;
+--p0:#c73e1d; --p1:#0e6e5c;
+--shadow:0 2px 8px rgba(40,35,20,.14);
+--felt:#e6e0cb;
+}
+@media (prefers-color-scheme: dark){
+:root{
+--bg:#12161a; --bg2:#0d1114; --panel:#1b2126; --card:#232a30; --card-back:#2c3a35;
+--ink:#e9e7db; --ink-soft:#a7ad9f; --line:#39424a; --line-strong:#55606a;
+--accent:#e0653f; --accent-ink:#fff4ec; --teal:#3aa78d; --teal-soft:#1d2f2a;
+--gold:#d3a83e; --danger:#e0655a; --ok:#6fbf73;
+--p0:#e0653f; --p1:#3aa78d;
+--shadow:0 2px 10px rgba(0,0,0,.45);
+--felt:#171d21;
+}
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+font-family:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic UI",sans-serif;
+background:var(--bg); color:var(--ink); line-height:1.55;
+-webkit-text-size-adjust:100%;
+}
+button,[role="button"],select,summary,input,textarea{font:inherit}
+button{min-height:2.25rem}
+.wrap{max-width:1180px;margin:0 auto;padding:10px 12px 48px}
+h1,h2,h3{font-family:"Shippori Mincho","Hiragino Mincho ProN",serif;margin:0}
+/* ---------- top bar ---------- */
+.topbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:4px 0 6px}
+.topbar .titlebox{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.topbar h1{font-size:1.35rem;letter-spacing:.04em}
+.topbar .sub{color:var(--ink-soft);font-size:.82rem}
+.modebar{display:flex;gap:6px;flex-wrap:wrap}
+.btn{
+appearance:none;border:1.5px solid var(--line-strong);background:var(--panel);color:var(--ink);
+border-radius:8px;padding:6px 14px;font-weight:700;cursor:pointer;min-height:2.4rem;
+}
+.btn:hover{border-color:var(--ink-soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.teal{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.seg-on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.small{padding:3px 10px;min-height:2.1rem;font-size:.85rem}
+.deckbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:2px 0 10px;font-size:.85rem}
+.deckbar label{display:flex;gap:6px;align-items:center;font-weight:700}
+.deckbar .note{color:var(--ink-soft);font-size:.78rem;font-weight:500}
+/* ---------- gauge ---------- */
+.gauge-panel{background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:10px 14px 12px;box-shadow:var(--shadow)}
+.gauge-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.85rem;font-weight:700}
+.gauge-head .who0{color:var(--p0)}.gauge-head .who1{color:var(--p1)}
+.gauge-track{position:relative;height:30px;margin-top:8px;border-radius:6px;border:1.5px solid var(--line-strong);
+background:linear-gradient(to right, color-mix(in srgb, var(--p1) 26%, transparent) 0%, transparent 42%, transparent 58%, color-mix(in srgb, var(--p0) 26%, transparent) 100%), var(--bg2)}
+.gauge-track .ticks{position:absolute;inset:0;display:flex}
+.gauge-track .ticks i{flex:1;border-right:1px solid color-mix(in srgb, var(--line-strong) 45%, transparent)}
+.gauge-track .ticks i:last-child{border-right:none}
+.gauge-track .zoneL,.gauge-track .zoneR{position:absolute;top:0;bottom:0;width:16.66%;background:repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--gold) 22%, transparent) 6px 12px)}
+.gauge-track .zoneL{left:0;border-radius:6px 0 0 6px}.gauge-track .zoneR{right:0;border-radius:0 6px 6px 0}
+.gauge-marker{position:absolute;top:-7px;width:4px;height:42px;background:var(--ink);border-radius:2px;transform:translateX(-50%);transition:left.45s ease}
+.gauge-marker::after{content:"";position:absolute;left:50%;top:-6px;transform:translateX(-50%);border:6px solid transparent;border-top:8px solid var(--ink)}
+.gauge-pos{text-align:center;font-weight:900;font-size:.95rem;margin-top:6px}
+.haisui-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:.78rem}
+.chip{border:1px solid var(--line-strong);border-radius:999px;padding:2px 10px;background:var(--bg2)}
+.chip.used{opacity:.55;text-decoration:line-through}
+.chip.hot{border-color:var(--gold);color:var(--gold);font-weight:900}
+/* ---------- board ---------- */
+.board{display:grid;grid-template-columns:1fr 300px;gap:12px;margin-top:12px;align-items:start}
+@media (max-width:900px){.board{grid-template-columns:1fr}}
+.side-panel{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:12px;box-shadow:var(--shadow)}
+.panel h2{font-size:1rem;margin-bottom:8px}
+.player-zone{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--felt);margin-bottom:10px}
+.player-zone.turn{border-color:var(--gold);box-shadow:0 0 0 2px color-mix(in srgb, var(--gold) 45%, transparent)}
+.pz-head{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;justify-content:space-between}
+.pz-name{font-weight:900;font-size:1rem}
+.pz-name .tag{font-size:.72rem;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+.pz-name .deckname{font-size:.75rem;font-weight:700;color:var(--ink-soft);margin-left:8px}
+.tag-you{background:var(--p0);color:#fff}.tag-cpu{background:var(--p1);color:#fff}
+.pz-stats{font-size:.8rem;color:var(--ink-soft);display:flex;gap:10px;flex-wrap:wrap}
+.pz-stats b{color:var(--ink)}
+.pts{font-weight:900;color:var(--gold)}
+.field{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;min-height:106px}
+.handrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:flex-end}
+.handlabel{font-size:.75rem;color:var(--ink-soft);width:100%}
+/* ---------- cards ---------- */
+.ucard{
+width:104px;min-height:100px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:9px;
+padding:6px 7px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow);position:relative;text-align:left;
+}
+.ucard .cost{position:absolute;top:-7px;left:-7px;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#fff;
+font-weight:900;display:flex;align-items:center;justify-content:center;font-size:.9rem;border:2px solid var(--panel);z-index:2}
+.ucard .nm{font-weight:900;font-size:.78rem;line-height:1.3;padding-right:2px}
+.ucard .tp{font-size:.64rem;color:var(--ink-soft)}
+.ucard .stats{font-weight:900;font-size:.95rem;display:flex;gap:8px}
+.ucard .stats .hp-dmg{color:var(--danger)}
+.ucard .badges{display:flex;gap:3px;flex-wrap:wrap}
+.bdg{font-size:.6rem;font-weight:700;border:1px solid var(--line-strong);border-radius:4px;padding:0 4px;background:var(--bg2)}
+.bdg.haste{border-color:var(--gold);color:var(--gold)}
+.bdg.sake{border-color:var(--danger);color:var(--danger)}
+.bdg.buff{border-color:var(--ok);color:var(--ok)}
+.bdg.guard{border-color:var(--teal);color:var(--teal)}
+.bdg.sente{border-color:var(--accent);color:var(--accent)}
+button.ucard{cursor:pointer}
+button.ucard:disabled{cursor:default;opacity:.92}
+.ucard.playable{border-color:var(--gold);box-shadow:0 0 0 2px color-mix(in srgb, var(--gold) 55%, transparent)}
+.ucard.selected{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent)}
+.ucard.targetable{border-color:var(--danger);box-shadow:0 0 0 3px color-mix(in srgb, var(--danger) 50%, transparent);cursor:pointer}
+.ucard.exhausted{opacity:.55}
+.slot{width:104px;min-height:100px;border:1.5px dashed var(--line-strong);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:.72rem}
+.hcard{width:88px;min-height:92px;font-size:.72rem}
+.hcard .nm{font-size:.72rem}
+.backcard{width:56px;height:78px;border-radius:8px;background:var(--card-back);border:1.5px solid var(--line-strong);
+color:#e8e2cf;display:flex;align-items:center;justify-content:center;font-size:.62rem;text-align:center;padding:4px;position:relative}
+button.backcard{cursor:pointer}
+.backcard.revealed{background:var(--card);color:var(--ink);border-color:var(--gold);flex-direction:column;gap:2px;width:72px}
+.backcard.targetable{box-shadow:0 0 0 3px color-mix(in srgb, var(--danger) 55%, transparent)}
+.backcard .rcost{font-weight:900;color:var(--gold)}
+/* ---------- prompt / actions ---------- */
+.prompt{border:1.5px solid var(--gold);background:color-mix(in srgb, var(--gold) 10%, var(--panel));border-radius:12px;padding:10px 14px;margin:10px 0}
+.prompt .p-title{font-weight:900}
+.prompt .p-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.turnbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.turnbar .now{font-weight:900;font-size:1.02rem}
+.msg{font-size:.88rem;color:var(--ink-soft)}
+/* ---------- log / memo ---------- */
+.log{max-height:300px;overflow:auto;font-size:.8rem;display:flex;flex-direction:column;gap:3px}
+.log div{border-bottom:1px dotted var(--line);padding-bottom:3px}
+.log .lt{color:var(--ink-soft);font-size:.7rem;margin-right:4px}
+textarea.memo{width:100%;min-height:86px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--card);color:var(--ink);padding:8px;resize:vertical}
+select,input[type="text"]{min-height:2.25rem;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--card);color:var(--ink);padding:4px 8px}
+.rate-row{display:flex;flex-direction:column;gap:6px;font-size:.85rem;margin-bottom:8px}
+.rate-row label{display:flex;justify-content:space-between;gap:8px;align-items:center}
+/* ---------- overlay ---------- */
+.overlay{position:fixed;inset:0;background:rgba(10,12,10,.62);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+#overlayRoot .sheet{background:var(--panel);color:var(--ink);border-radius:14px;max-width:560px;width:100%;max-height:88vh;max-height:88dvh;overflow:auto;padding:20px;box-shadow:var(--shadow)}
+.overlay h2{font-size:1.25rem;margin-bottom:8px}
+#overlayRoot .handview{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+#overlayRoot .handview .ucard{min-height:0}
+.haisui-btns{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.haisui-btns .btn{text-align:left;padding:10px 14px}
+.haisui-btns .btn small{display:block;font-weight:500;color:inherit;opacity:.75}
+.picklist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.picklist .btn{text-align:left;padding:9px 14px}
+.picklist .btn small{display:block;font-weight:500;color:inherit;opacity:.75}
+.pickgrid{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.pickzone{font-weight:900;font-size:.85rem;margin-top:12px}
+/* ---------- card detail popup ---------- */
+body{overflow-x:clip}
+.btn,.ucard,.backcard{touch-action:manipulation}
+.ucard .more{margin-top:auto;font-size:.62rem;font-weight:700;color:var(--gold)}
+.detail-wrap{position:fixed;inset:0;background:rgba(10,12,10,.55);display:flex;align-items:center;justify-content:center;z-index:80;padding:16px}
+.detail-sheet{background:var(--panel);color:var(--ink);border-radius:14px;max-width:420px;width:100%;max-height:88vh;max-height:88dvh;overflow:auto;padding:20px;box-shadow:var(--shadow)}
+.d-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.d-cost{flex:none;width:34px;height:34px;border-radius:50%;background:var(--gold);color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:1.05rem}
+.d-name{font-weight:900;font-size:1.2rem;line-height:1.3}
+.d-type{font-size:.8rem;color:var(--ink-soft);margin-bottom:8px}
+.d-stats{display:flex;gap:14px;font-weight:900;font-size:1.05rem;margin-bottom:8px}
+.d-status{font-size:.82rem;color:var(--ink-soft);margin-bottom:8px}
+.d-status div{margin:2px 0}
+.d-fx{font-size:.95rem;line-height:1.65;margin:8px 0}
+.detail-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+/* ---------- docs ---------- */
+.docs{margin-top:26px;display:flex;flex-direction:column;gap:14px}
+.docs h2{font-size:1.2rem;border-bottom:2px solid var(--line-strong);padding-bottom:4px;margin-bottom:8px}
+.docs h3{font-size:1rem;margin:12px 0 6px}
+.docs p,.docs li{font-size:.9rem}
+.docs ul{margin:4px 0 8px;padding-left:1.3em}
+.decktable{width:100%;border-collapse:collapse;font-size:.85rem}
+.decktable th,.decktable td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+.decktable th{font-size:.75rem;color:var(--ink-soft)}
+.decktable td.c,.decktable th.c{text-align:center;white-space:nowrap}
+.decktable .fxcell{font-size:.78rem;color:var(--ink-soft)}
+@media (max-width:640px){
+.ucard{width:31%;min-width:92px}
+.slot{width:31%;min-width:92px}
+.hcard{width:30%;min-width:86px}
+.overlay{padding:10px}
+.decktable thead{display:none}
+.decktable tr{display:block;padding:6px 0;border-bottom:1px solid var(--line)}
+.decktable td{display:inline-block;border-bottom:none;padding:2px 8px 2px 0;white-space:normal}
+.decktable td.fxcell{display:block;padding-top:2px}
+}
+.kbd-note{font-size:.78rem;color:var(--ink-soft)}
+.winner-banner{font-size:1.3rem;font-weight:900}
+.hidden{display:none!important}
+/* ---------- title / setup / builder views ---------- */
+.game-title{font-size:clamp(2rem,7.2vw,3.6rem);line-height:1.25;letter-spacing:.03em;margin:26px 0 10px}
+.title-lead{font-size:1rem;color:var(--ink-soft);max-width:560px;margin:0 0 22px}
+.title-menu{display:flex;flex-direction:column;gap:10px;max-width:540px}
+.title-menu .btn{text-align:left;padding:13px 18px;font-size:1.05rem;border-radius:10px}
+.title-menu .btn small{display:block;font-weight:500;font-size:.82rem;opacity:.78;margin-top:2px}
+.view-title{font-size:1.4rem;margin:14px 0 10px}
+.view-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.setup-note{color:var(--ink-soft);font-size:.85rem;margin-top:10px;max-width:560px}
+.slot-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.slot-tabs .btn.seg-on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.builder-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.builder-bar input[type="text"]{min-width:200px;flex:1;max-width:340px}
+.builder-total{font-weight:900;font-size:1.1rem}
+.builder-msg{font-size:.88rem;margin:8px 0;min-height:1.2em}
+.builder-msg.err{color:var(--danger);font-weight:700}
+.builder-msg.ok{color:var(--ok);font-weight:700}
+.builder-cols{display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start}
+@media (max-width:900px){.builder-cols{grid-template-columns:1fr}}
+.pool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px}
+.pool-card{background:var(--card);border:1.5px solid var(--line-strong);border-radius:9px;padding:8px 9px 8px 12px;position:relative;cursor:pointer;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px}
+.pool-card.in-deck{border-color:var(--gold);box-shadow:0 0 0 2px color-mix(in srgb, var(--gold) 45%, transparent)}
+.pool-card .cost{position:absolute;top:-7px;left:-7px;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:.9rem;border:2px solid var(--panel);z-index:2}
+.pc-name{font-weight:900;font-size:.85rem;line-height:1.3}
+.pc-meta{font-size:.68rem;color:var(--ink-soft)}
+.pc-fx{font-size:.72rem;color:var(--ink-soft);line-height:1.45;flex:1}
+.pc-foot{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.pc-count{font-weight:900;font-size:.85rem}
+.pc-btns{display:flex;gap:4px}
+.pc-btns .btn{min-height:2rem;padding:2px 10px}
+.builder-list{display:flex;flex-direction:column;gap:4px;font-size:.88rem}
+.builder-list .bl-row{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px dotted var(--line);padding:3px 0}
+.builder-list .bl-row .btn{min-height:1.9rem;padding:1px 9px}
+.builder-empty{color:var(--ink-soft);font-size:.85rem}
+.title-name-box{max-width:540px;margin:0 0 14px}.title-name-box label{display:block;font-weight:700}.title-name-box input{width:100%;margin-top:6px}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<script>
+var PLAYER_NAME="プレイヤー1";
+var ROOM_NAMES=["プレイヤー1","プレイヤー2"];
+var roomConnection=null, roomCode="", roomStarted=false;
+</script>
+</head>
+<body>
+<div class="wrap">
+<div id="titleView">
+<h1 class="game-title">なんかいい感じのTCG（予定）</h1>
+<p class="title-lead">戦線ゲージを押し切る2人対戦カードゲーム。ポイントの繰り越しと「背水の陣」が勝負どころです。構築済みデッキ3種に加えて、全カードから40枚を組むカスタムデッキも作れます。</p>
+<div class="title-name-box"><label>プレイヤー名
+<input id="titlePlayerName" type="text" maxlength="20" autocomplete="nickname" placeholder="名前を入力">
+</label></div>
+<nav class="title-menu" aria-label="メインメニュー">
+<button class="btn primary" data-act="nav-setup" data-mode="cpu">CPU対戦<small>コンピュータと1人で対戦する</small></button>
+<button class="btn" data-act="nav-setup" data-mode="2p">2人対戦（パス＆プレイ）<small>同じ端末を渡し合って対戦する</small></button>
+<button class="btn" data-act="nav-room">ブラウザ対戦ルーム<small>ルームを作る、またはルームコードで参加する</small></button>
+<button class="btn" data-act="nav-setup" data-mode="auto">CPU同士の観戦<small>コンピュータ同士の自動対戦を見る</small></button>
+<button class="btn" data-act="nav-builder">デッキ編成<small>全カードから40枚のカスタムデッキを作る</small></button>
+<button class="btn" data-act="nav-docs">ルール・カード一覧<small>ルール、構築済みデッキ、全カードを確認する</small></button>
+</nav>
+</div>
+
+<div id="roomView" class="hidden">
+<h2 class="view-title">ブラウザ対戦ルーム</h2>
+<div class="panel" style="max-width:520px">
+<label>デッキ
+<select id="roomDeck">
+<option value="niakuro">にあくろ × ニトグリ</option>
+<option value="muscat">マスカット × ミルキー</option>
+<option value="coconut">ココナッツ × やーヤ</option>
+</select></label>
+<div class="view-actions">
+<button class="btn primary" data-act="room-create">ルームを作る</button>
+</div>
+<hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+<label>参加するルームコード
+<input id="roomCode" type="text" maxlength="6" placeholder="例：ABC234" style="text-transform:uppercase">
+</label>
+<div class="view-actions"><button class="btn" data-act="room-join">ルームに参加</button></div>
+<p id="roomStatus" class="setup-note" aria-live="polite"></p>
+<div id="roomLobby" class="hidden">
+<h3 id="roomCodeLabel"></h3>
+<div id="roomPlayers"></div>
+<div class="view-actions"><button class="btn primary" data-act="room-start">対戦開始</button></div>
+</div>
+<button class="btn ghost" data-act="back-title">タイトルに戻る</button>
+</div>
+</div>
+
+<div id="setupView" class="hidden">
+<h2 class="view-title" id="setupTitle">対戦設定</h2>
+<div class="modebar" role="group" aria-label="対戦形式">
+<button class="btn small" id="modeCpu" data-act="setup-mode" data-mode="cpu">CPU戦</button>
+<button class="btn small" id="mode2p" data-act="setup-mode" data-mode="2p">2人対戦（同じ端末）</button>
+<button class="btn small" id="modeAuto" data-act="setup-mode" data-mode="auto">CPU同士（観戦）</button>
+</div>
+<div class="deckbar">
+<label>先攻デッキ <select id="deckSel0" aria-label="先攻のデッキ"></select></label>
+<label>後攻デッキ <select id="deckSel1" aria-label="後攻のデッキ"></select></label>
+<span class="note">CPU戦では後攻がCPUのデッキです。デッキ編成で保存したカスタムデッキも選べます。</span>
+</div>
+<p class="setup-note" id="setupNote"></p>
+<div class="view-actions">
+<button class="btn primary" data-act="start-battle">対戦開始</button>
+<button class="btn ghost" data-act="back-title">タイトルに戻る</button>
+</div>
+</div>
+
+<div id="builderView" class="hidden">
+<h2 class="view-title">デッキ編成</h2>
+<p class="setup-note">カードをタップすると1枚追加、−ボタンで1枚外せます。合計ちょうど40枚・同名カードは3枚まで。保存したデッキはこの端末に残り、対戦のデッキ選択に並びます。</p>
+<div class="slot-tabs" id="slotTabs" role="group" aria-label="カスタムデッキの保存枠"></div>
+<div class="builder-bar">
+<label style="font-weight:700">デッキ名 <input type="text" id="builderName" maxlength="30" placeholder="カスタムデッキ"></label>
+<label style="font-weight:700">土台にコピー <select id="copyFrom" aria-label="コピー元の構築済みデッキ"></select></label>
+<button class="btn small" data-act="builder-copy">コピーして編集</button>
+</div>
+<div class="builder-bar">
+<span class="builder-total" id="builderTotal">0 / 40枚</span>
+<button class="btn small primary" data-act="builder-save" id="builderSave">この枠に保存</button>
+<button class="btn small" data-act="builder-clear">空にする</button>
+<button class="btn small" data-act="builder-delete">この枠を削除</button>
+<button class="btn small ghost" data-act="back-title">タイトルに戻る</button>
+</div>
+<div class="builder-msg" id="builderMsg" aria-live="polite"></div>
+<div class="builder-cols">
+<div>
+<h3 style="margin:4px 0 8px">カードプール（全42種）</h3>
+<div class="pool-grid" id="poolGrid"></div>
+</div>
+<aside class="panel">
+<h2>現在のデッキ</h2>
+<div class="builder-list" id="builderList"></div>
+</aside>
+</div>
+</div>
+
+<div id="battleView" class="hidden">
+<div class="topbar">
+<div class="titlebox">
+<h1>対戦</h1>
+<span class="sub">なんかいい感じのTCG（予定）</span>
+</div>
+<div class="modebar">
+<button class="btn small" data-act="back-title">タイトルに戻る</button>
+<button class="btn small primary" id="newGame">新しい対戦</button>
+</div>
+</div>
+
+<section class="gauge-panel" aria-label="戦線ゲージ">
+<div class="gauge-head">
+<span class="who1">◀ <span id="gaugeName1">相手</span> の陣地まで あと <span id="gaugeRem1">15</span></span>
+<span>戦線ゲージ（−15〜+15）</span>
+<span class="who0"><span id="gaugeName0">あなた</span> の陣地まで あと <span id="gaugeRem0">15</span> ▶</span>
+</div>
+<div class="gauge-track" id="gaugeTrack">
+<div class="zoneL"></div><div class="zoneR"></div>
+<div class="ticks" id="gaugeTicks"></div>
+<div class="gauge-marker" id="gaugeMarker"></div>
+</div>
+<div class="gauge-pos" id="gaugePos">ゲージ位置 0</div>
+<div class="haisui-chips" id="haisuiChips"></div>
+</section>
+
+<div class="board">
+<main id="playArea">
+<div id="oppZone"></div>
+<div id="promptArea"></div>
+<div class="turnbar" id="turnBar"></div>
+<div id="myZone"></div>
+</main>
+<aside class="side-panel">
+<section class="panel">
+<h2>対戦ログ</h2>
+<div class="log" id="logBox"></div>
+</section>
+<section class="panel">
+<h2>試遊メモ（次のカード決め・ルール調整用）</h2>
+<div class="rate-row">
+<label>試合の長さ <select id="rateLength"><option value="">未評価</option><option>短すぎる</option><option>ちょうどいい</option><option>長すぎる</option></select></label>
+<label>ゲージの動き <select id="rateGauge"><option value="">未評価</option><option>動きすぎ</option><option>ちょうどいい</option><option>動かなすぎ</option></select></label>
+<label>背水の陣 <select id="rateHaisui"><option value="">未評価</option><option>強い</option><option>ちょうどいい</option><option>弱い・発動しにくい</option></select></label>
+</div>
+<textarea class="memo" id="memo" placeholder="気になったカード、強すぎた／弱すぎた動き、詰まった場面などを自由に書いてください。"></textarea>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+<button class="btn small teal" id="dlRecord">試遊記録をダウンロード</button>
+<button class="btn small" id="copyRecord">記録をコピー</button>
+</div>
+<p class="kbd-note" id="copyMsg" aria-live="polite"></p>
+</section>
+</aside>
+</div>
+</div><!-- /battleView -->
+
+<div id="docsView" class="hidden">
+<div class="view-actions" style="margin:10px 0 14px">
+<button class="btn" data-act="back-title">タイトルに戻る</button>
+</div>
+<div class="docs">
+<section class="panel">
+<h2>構築済みデッキ（3種・各40枚）</h2>
+<div id="deckLists"></div>
+</section>
+<section class="panel">
+<h2>全カード一覧（キャラクター30枚＋汎用戦術12枚）</h2>
+<div id="allCards"></div>
+</section>
+<section class="panel">
+<h2>ルールとカード整理（確定済みの内容）</h2>
+<div id="rulesDoc"></div>
+</section>
+</div>
+<div class="view-actions">
+<button class="btn" data-act="back-title">タイトルに戻る</button>
+</div>
+</div><!-- /docsView -->
+</div>
+
+<div id="overlayRoot"></div>
+<div id="detailRoot"></div>
+
+<script>
+"use strict";
+/* =========================================================
+カードデータ（~/workspace/tcg の C# エンジン定義と一致）
+========================================================= */
+var KOSAN="古参", AKUYUU="悪友", ZENYUU="善友";
+var CARDS = {
+/* ---- にあくろ（邪魔する型） ---- */
+niakuro:{id:"niakuro",name:"にあくろ",type:"unit",cost:3,atk:2,hp:2,traits:[KOSAN,AKUYUU],
+text:"登場時、相手の手札を1枚選んで捨てる。（裏向きのカードは、中身を見ずに選ぶ）",fx:{discardChosen:1}},
+mini:{id:"mini",name:"みにあくろ",type:"unit",cost:1,atk:1,hp:1,traits:[KOSAN,AKUYUU],
+text:"登場時、相手の手札をランダムに1枚表向きにする。（表向きにしたカードは、手札を離れるまで表向きのまま）",fx:{revealRandom:1}},
+gamer:{id:"gamer",name:"ゲーマーにあくろ",type:"unit",cost:5,atk:3,hp:5,traits:[KOSAN,AKUYUU],
+text:"このユニットが場にいる間、相手のユニットが攻撃する時、その攻撃力を-1する。",fx:{debuffAura:1}},
+cat:{id:"cat",name:"猫被りにあくろ",type:"unit",cost:4,atk:2,hp:3,traits:[KOSAN,ZENYUU],
+text:"登場時と破壊された時、自分のユニット1体を選び、体力を2回復する。",fx:{healOnPlay:2,healOnDeath:2}},
+super:{id:"super",name:"超絶自己中にあくろ",type:"unit",cost:9,atk:7,hp:7,traits:[KOSAN,AKUYUU],allTraits:true,
+text:"登場時、お互いの手札を全て表向きにし、自分の手札を1枚と相手の手札を1枚選んで捨てる。このユニットが場にいる間、お互いの手札は表向きになる（新しく手札に加わるカードも表向きになる）。1ターンに1度、次のうち1つを選ぶ。①カードを1枚引く。その後、自分の手札を1枚と相手の手札を1枚選んで捨てる。②相手のユニット1体の体力の最大値を-1する。③戦線ゲージを相手側に1進める。このユニットは全ての特徴を持つ。",fx:{selfishOnPlay:1,revealsAll:1,activated:"selfish"}},
+/* ---- ニトグリ（連携型） ---- */
+nitoguri:{id:"nitoguri",name:"ニトグリ",type:"unit",cost:3,atk:2,hp:3,traits:[KOSAN,AKUYUU],
+text:"連携2：古参（自分の場に自分以外の古参がいる間、攻撃力+2）",fx:{linkage:{trait:KOSAN,v:2}}},
+minito:{id:"minito",name:"ミニトグリ",type:"unit",cost:2,atk:2,hp:1,traits:[KOSAN,AKUYUU],
+text:"登場時、相手のユニット1体を選び、2ダメージを与える。",fx:{damageOnPlay:2}},
+gamern:{id:"gamern",name:"ゲーマーニトグリ",type:"unit",cost:5,atk:5,hp:4,traits:[KOSAN,AKUYUU],
+text:"登場時、自分のユニットを2体まで選び、攻撃力を+1する。（同じユニットは1回だけ）",fx:{buffOnPlay:{v:1,n:2}}},
+orderless:{id:"orderless",name:"秩序なき連携ニトグリ",type:"unit",cost:8,atk:8,hp:7,traits:[KOSAN,AKUYUU],
+text:"このユニットが場にいる間、自分のユニット全ては連携1：古参を得る（もともと持っている連携と重なる）。自分の場に自分以外の悪友がいれば、その悪友全てとこのユニットは攻撃力を+1し、体力の最大値を-1する。自分の場に善友がいれば、その善友全てとこのユニットは体力の最大値を+1する。",fx:{orderless:1,grantsLinkage:{trait:KOSAN,v:1}}},
+bakusoku:{id:"bakusoku",name:"爆速退社ニトグリ",type:"unit",cost:3,atk:2,hp:3,traits:[KOSAN,AKUYUU],
+text:"登場時、自分の場に自分以外のユニットがいれば、速攻を得る。（速攻：出たターンでも攻撃できる）このユニットは攻撃した後、手札に戻る。",fx:{conditionalHaste:1,returnsToHand:1}},
+/* ---- マスカット（バランス型） ---- */
+muscat:{id:"muscat",name:"マスカット",type:"unit",cost:3,atk:3,hp:3,traits:[KOSAN,ZENYUU],
+text:"守護",fx:{guard:1}},
+minimuscat:{id:"minimuscat",name:"ミニマスカット",type:"unit",cost:1,atk:0,hp:3,traits:[KOSAN,ZENYUU],
+text:"守護",fx:{guard:1}},
+ripe:{id:"ripe",name:"成熟マスカット",type:"unit",cost:4,atk:3,hp:4,traits:[KOSAN,ZENYUU],
+text:"このユニットが場にいる間、守護を持つ自分のユニットの体力の最大値を+1する。",fx:{guardHealthAura:1}},
+shine:{id:"shine",name:"シャインマスカット",type:"unit",cost:8,atk:4,hp:8,traits:[KOSAN,ZENYUU],
+text:"守護。このユニットが場にいる間、守護を持つ自分のユニットの攻撃力と体力の最大値を+1する。破壊された時、自分のデッキからコスト5以下で守護を持つユニットを1枚選んで、場に出す。",fx:{guard:1,guardStatAura:1,deployGuardOnDeath:5}},
+gamermuscat:{id:"gamermuscat",name:"ゲーマーマスカット",type:"unit",cost:5,atk:2,hp:6,traits:[KOSAN,ZENYUU],
+text:"守護。登場時、自分のユニット1体を選んで、守護を付与する。",fx:{guard:1,grantsGuardOnPlay:1}},
+/* ---- ココナッツ（パワー型） ---- */
+coconut:{id:"coconut",name:"ココナッツ",type:"unit",cost:4,atk:4,hp:3,traits:[KOSAN,AKUYUU],
+text:"登場時、相手のユニット1体を選んで、3ダメージを与える。",fx:{damageOnPlay:3}},
+gamercoco:{id:"gamercoco",name:"ゲーマーココナッツ",type:"unit",cost:5,atk:5,hp:3,traits:[KOSAN,AKUYUU],
+text:"先手必勝（出たターンに、相手のユニットを攻撃できる）。登場したターン、戦闘によるダメージを受けない。",fx:{canAttackUnits:1,battleImmunePlayTurn:1}},
+minicoco:{id:"minicoco",name:"ミニココナッツ",type:"unit",cost:2,atk:3,hp:1,traits:[KOSAN,AKUYUU],
+text:"先手必勝（出たターンに、相手のユニットを攻撃できる）",fx:{canAttackUnits:1}},
+solo:{id:"solo",name:"孤軍奮闘ココナッツ",type:"unit",cost:6,atk:5,hp:6,traits:[KOSAN,AKUYUU],
+text:"先手必勝（出たターンに、相手のユニットを攻撃できる）。このユニットが戦闘で受けるダメージは、最大で2になる。このユニットは、相手のユニットしか攻撃できない。",fx:{canAttackUnits:1,battleCap:2,onlyUnits:1}},
+marksman:{id:"marksman",name:"百発百中ココナッツ",type:"unit",cost:8,atk:8,hp:6,traits:[KOSAN,AKUYUU],
+text:"先手必勝（出たターンに、相手のユニットを攻撃できる）。登場したターン、2回まで攻撃できる。このユニットが戦闘で受けるダメージは、最大で2になる。このユニットが攻撃して相手のユニットを破壊した時、このユニットの体力を1回復する。",fx:{canAttackUnits:1,battleCap:2,attacksTwicePlayTurn:1,healOnKill:1}},
+/* ---- やーや（トリッキー型） ---- */
+yaya:{id:"yaya",name:"やーや",type:"unit",cost:3,atk:2,hp:2,traits:[KOSAN,ZENYUU],
+text:"登場時、自分の基本ポイントを+1する。",fx:{onPlay:{kind:"ramp",v:1}}},
+miniyaya:{id:"miniyaya",name:"みにやーや",type:"unit",cost:1,atk:1,hp:1,traits:[KOSAN,ZENYUU],
+text:"登場時、自分の基本ポイントが5以上なら、このターンに使えるポイントを+1する。",fx:{onPlay:{kind:"tempPoints",v:1,minBase:5}}},
+gameryaya:{id:"gameryaya",name:"ゲーマーやーや",type:"unit",cost:5,atk:4,hp:4,traits:[KOSAN,ZENYUU],
+text:"登場時、自分の基本ポイントが8以上なら、このユニットの攻撃力を+2し、体力の最大値を+2する。このターンに使えるポイントを+2する。",fx:{selfBuff:{atk:2,hp:2,minBase:8,points:2}}},
+rich:{id:"rich",name:"器用富豪やーや",type:"unit",cost:4,atk:4,hp:4,traits:[KOSAN,ZENYUU],
+text:"登場時と攻撃時、以下から1つを選んで使う。①カードを1枚引く。②相手のユニット1体を選び、3ダメージを与える。③このターンに使えるポイントを+1する。（攻撃時の選択は、攻撃する前に選んで解決する）",fx:{richChoice:3}},
+master:{id:"master",name:"手練手管やーや",type:"unit",cost:7,atk:6,hp:6,traits:[KOSAN,ZENYUU],
+text:"登場時と攻撃時、以下から1つを選んで使う。自分の基本ポイントが10以上なら、2つまで使える（同じ効果を2回選んでもよい）。①カードを2枚引く。②相手のユニット全てに3ダメージを与える。③このターンに使えるポイントを+2する。④自分の場・墓地・手札のユニットを1枚選んで除外する。そのユニットの登場時効果を使い、そのユニットの能力をコピーする。",fx:{masterChoice:{dmg:3,extraMinBase:10}}},
+/* ---- ミルキー（ドロー・手数型） ---- */
+milky:{id:"milky",name:"ミルキー",type:"unit",cost:4,atk:3,hp:4,traits:[KOSAN,ZENYUU],
+text:"登場時、カードを2枚引く。破壊された時、カードを2枚引く。",fx:{onPlay:{kind:"draw",v:2},drawOnDeath:2}},
+minimilky:{id:"minimilky",name:"ミニミルキー",type:"unit",cost:1,atk:1,hp:1,traits:[KOSAN,ZENYUU],
+text:"登場時、カードを1枚引く。",fx:{onPlay:{kind:"draw",v:1}}},
+catmilky:{id:"catmilky",name:"猫好きミルキー",type:"unit",cost:2,atk:1,hp:2,traits:[KOSAN,ZENYUU],
+text:"登場時、自分のデッキからコスト4以下のユニットをランダムに1枚、手札に加える。",fx:{onPlay:{kind:"fetchSmall",v:4}}},
+gamermilky:{id:"gamermilky",name:"ゲーマーミルキー",type:"unit",cost:5,atk:2,hp:6,traits:[KOSAN,ZENYUU],
+text:"登場時、カードを2枚引く。このユニットが場にいる間、自分のターン開始時、カードを1枚引く。",fx:{onPlay:{kind:"draw",v:2},drawAtTurnStart:1}},
+bigmilky:{id:"bigmilky",name:"無数の選択肢ミルキー",type:"unit",cost:8,atk:0,hp:0,traits:[KOSAN,ZENYUU],
+text:"このユニットの攻撃力と体力は、この試合で自分が効果で引いたカードの枚数の半分（切り捨て）になる。登場時、カードを2枚引く。その後、自分の手札から、自分の手札の枚数よりコストが低いユニットを1枚選んで、コストを支払わずに場に出す。",fx:{scales:1,onPlay:{kind:"draw",v:2},freeDeploy:1}},
+/* ---- 汎用戦術 ---- */
+shinshi:{id:"shinshi",name:"紳士の嗜み",type:"tactic",cost:1,text:"カードを2枚引く。",fx:{kind:"draw",v:2}},
+moshimo:{id:"moshimo",name:"もしも～し",type:"tactic",cost:2,text:"自分のデッキからコスト5以上のユニットをランダムに1枚、手札に加える。",fx:{kind:"fetchBig",v:5}},
+bakugeki:{id:"bakugeki",name:"不可視の爆撃",type:"tactic",cost:3,text:"相手のユニット1体を選び、3ダメージを与える。",fx:{kind:"targetDamage",v:3}},
+asobi:{id:"asobi",name:"にあくろの遊び心",type:"tactic",cost:3,text:"相手の手札をランダムに1枚捨てる。",fx:{kind:"discardRandom",v:1}},
+usagi:{id:"usagi",name:"三兎追えば二兎得る",type:"tactic",cost:3,text:"カードを3枚引く。その中から2枚を選び、手札に加え、残りを墓地に置く。",fx:{kind:"drawPick",v:3,keep:2}},
+sake:{id:"sake",name:"酒！酒！酒！",type:"tactic",cost:3,text:"自分のユニット1体を選び、攻撃力を+2し、体力の最大値を-2する。そのユニットは攻撃した後に破壊される。",fx:{kind:"sake"}},
+issei:{id:"issei",name:"一斉射撃",type:"tactic",cost:4,text:"相手のユニット全てに1ダメージを与える。",fx:{kind:"damageAllOpp",v:1}},
+junbi:{id:"junbi",name:"ゲームの準備",type:"tactic",cost:4,text:"自分のデッキから戦術をランダムに2枚、手札に加える。",fx:{kind:"fetchTactics",v:2}},
+kurushi:{id:"kurushi",name:"苦し紛れの一撃",type:"tactic",cost:4,text:"相手のユニットをランダムに1体破壊する。",fx:{kind:"destroyRandom",v:1}},
+kanri:{id:"kanri",name:"管理者権限",type:"tactic",cost:5,text:"戦線ゲージを自分の側に3押し戻す。",fx:{kind:"pushback",v:3}},
+chabudai:{id:"chabudai",name:"ちゃぶ台返し！",type:"tactic",cost:6,text:"お互いのユニット全てに3ダメージを与える。",fx:{kind:"damageAllUnits",v:3}},
+saizensen:{id:"saizensen",name:"最前線攻略tv⁉︎",type:"tactic",cost:3,text:"自分の基本ポイントを+1する。",fx:{kind:"ramp",v:1}}
+};
+var ALL_CARD_ORDER=["niakuro","mini","gamer","cat","super","nitoguri","minito","gamern","orderless","bakusoku",
+"muscat","minimuscat","ripe","shine","gamermuscat","coconut","gamercoco","minicoco","solo","marksman",
+"yaya","miniyaya","gameryaya","rich","master","milky","minimilky","catmilky","gamermilky","bigmilky",
+"shinshi","moshimo","bakugeki","asobi","usagi","sake","issei","junbi","kurushi","kanri","chabudai","saizensen"];
+var DECKS=[
+{name:"にあくろ×ニトグリ",sub:"妨害と連携",recipe:[
+["niakuro",3],["mini",3],["gamer",2],["super",2],["cat",3],
+["nitoguri",3],["minito",3],["gamern",2],["orderless",2],["bakusoku",3],
+["shinshi",3],["asobi",3],["moshimo",1],["sake",2],["bakugeki",2],["kurushi",1],["saizensen",2]]},
+{name:"マスカット×ミルキー",sub:"守護と手数",recipe:[
+["minimuscat",3],["minimilky",3],["catmilky",2],["muscat",2],["milky",3],["ripe",3],["cat",2],
+["gamermuscat",3],["gamermilky",3],["shine",2],["bigmilky",2],
+["shinshi",3],["usagi",1],["moshimo",2],["saizensen",2],["bakugeki",3],["asobi",1]]},
+{name:"ココナッツ×やーや",sub:"パワーとトリック",recipe:[
+["minicoco",3],["coconut",3],["gamercoco",3],["solo",2],["marksman",1],
+["miniyaya",3],["yaya",3],["rich",3],["gameryaya",2],["master",2],["cat",2],
+["shinshi",3],["saizensen",3],["moshimo",2],["bakugeki",3],["issei",1],["kanri",1]]}
+];
+var GAUGE_MAX=15, HAISUI_REMAIN=5, FIELD_LIMIT=5, HAND_LIMIT=10, START_HAND=5;
+</script>
+<script>
+"use strict";
+/* =========================================================
+対戦エンジン（C#エンジン GameEngine の挙動を移植）
+========================================================= */
+var IS_NODE = (typeof document === "undefined");
+var _uid=1;
+function mkCard(cardId){ return {uid:_uid++, cardId:cardId, revealed:false};}
+function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t;} return a;}
+function resolveDeckDef(x){
+if(x===null || x===undefined) return DECKS[0];
+if(typeof x==="number") return DECKS[x]||DECKS[0];
+if(typeof x==="string" && typeof deckDefByKey==="function") return deckDefByKey(x)||DECKS[0];
+return x;
+}
+function buildDeck(recipe){ var d=[]; recipe.forEach(function(r){ for(var i=0;i<r[1];i++) d.push(mkCard(r[0]));}); return shuffle(d);}
+function mkPlayer(idx, deckRef){ var def=resolveDeckDef(deckRef); return {idx:idx, deckDef:def, deck:buildDeck(def.recipe), hand:[], grave:[], field:[], base:2, carry:0, avail:0, pendingBonus:0, firstTurn:true, mulliganUsed:false, effectDraws:0};}
+function mkUnit(card, owner, turn){ return {uid:card.uid, card:card, cardId:card.cardId, owner:owner, damage:0, atkBuff:0, hpRed:0, hpBuff:0, auraAtk:0, auraHp:0, scale:0, attacksUsed:0, abilityUsed:false, summoned:turn, haste:false, destroyAfter:false, grantedGuard:false, copiedDef:null};}
+
+var S=null, CPU_ACT=false;
+function newState(mode, d0, d1){
+var p0=mkPlayer(0,d0), p1=mkPlayer(1,d1), i;
+for(i=0;i<START_HAND;i++) p0.hand.push(p0.deck.pop());
+for(i=0;i<START_HAND+1;i++) p1.hand.push(p1.deck.pop());
+p1.pendingBonus=1; /* 後攻補正: 最初のターン +1ポイント */
+return { mode:mode, phase:"mulligan", mulliganTurn:0, passGate:false, passFor:"",
+players:[p0,p1], active:0, globalTurn:0, gauge:0,
+haisuiUsed:[false,false], haisuiTaken:{}, pendingQueue:[], pending:null, masterCtx:null,
+selected:null, abilityMenu:false, discardMode:false, winner:-1, winReason:"",
+log:[], stats:{plays:{}, attacks:0, haisui:0}, turnCount:[0,0], over:false};
+}
+function pname(p){
+if(typeof S!=="undefined"&&S&&S.mode=== "room") return ROOM_NAMES[p]||("プレイヤー"+(p+1));
+if(typeof S!=="undefined"&&S&&S.mode=== "cpu") return p===0?(PLAYER_NAME||"プレイヤー1"):"CPU";
+if(typeof S!=="undefined"&&S&&S.mode=== "2p") return p===0?(PLAYER_NAME||"プレイヤー1"):(ROOM_NAMES[1]||"プレイヤー2（後攻）");
+if(typeof S!=="undefined"&&S&&S.mode=== "auto") return p===0?"CPU・先攻":"CPU・後攻";
+return p===0?(PLAYER_NAME||"プレイヤー1"):"プレイヤー2";
+}
+function deckName(p){ return S.players[p].deckDef.name;}
+function deckSub(p){ return S.players[p].deckDef.sub||"";}
+function log(pIdx, text){ if(!S) return; S.log.push({turn:S.globalTurn, who:(pIdx===null||pIdx===undefined)?"":pname(pIdx), text:text}); if(S.log.length>600) S.log.shift();}
+function defOf(u){ return CARDS[u.cardId];}
+function defsOf(u){ var ds=[CARDS[u.cardId]]; if(u.copiedDef) ds.push(CARDS[u.copiedDef]); return ds;}
+function anyDef(u, key){ return defsOf(u).some(function(d){ return d.fx && d.fx[key];});}
+function findUnit(ownerIdx, uid){ var f=S.players[ownerIdx].field; for(var i=0;i<f.length;i++) if(f[i].uid===uid) return f[i]; return null;}
+function findUnitAny(uid){ for(var p=0;p<2;p++){ var u=findUnit(p,uid); if(u) return u;} return null;}
+function hasTrait(u,t){ return defsOf(u).some(function(d){ return!!d.allTraits || (d.traits||[]).indexOf(t)>=0;});}
+function hasGuard(u){ if(u.grantedGuard) return true; return defsOf(u).some(function(d){ return d.fx && d.fx.guard;});}
+function otherHasTrait(field, self, trait){ for(var i=0;i<field.length;i++){ if(field[i]!==self && hasTrait(field[i],trait)) return true;} return false;}
+function linkageBonus(u){
+var field=S.players[u.owner].field, bonus=0;
+defsOf(u).forEach(function(d){ if(d.fx && d.fx.linkage && otherHasTrait(field,u,d.fx.linkage.trait)) bonus+=d.fx.linkage.v;});
+field.forEach(function(src){ defsOf(src).forEach(function(sd){ if(sd.fx && sd.fx.grantsLinkage && otherHasTrait(field,u,sd.fx.grantsLinkage.trait)) bonus+=sd.fx.grantsLinkage.v;});});
+return bonus;
+}
+function unitAtk(u){ return defOf(u).atk + u.atkBuff + u.auraAtk + u.scale;}
+function unitMaxHp(u){ return defOf(u).hp - u.hpRed + u.hpBuff + u.auraHp + u.scale;}
+function unitHp(u){ return unitMaxHp(u)-u.damage;}
+function debuffAgainst(pIdx){ var total=0; S.players[1-pIdx].field.forEach(function(u){ defsOf(u).forEach(function(d){ if(d.fx&&d.fx.debuffAura) total+=d.fx.debuffAura;});}); return total;}
+function atkWhenAttacking(u){ return Math.max(0, unitAtk(u)+linkageBonus(u)-debuffAgainst(u.owner));}
+function counterAtk(u){ return unitAtk(u)+linkageBonus(u);}
+function effRichDamage(u){ var m=0; defsOf(u).forEach(function(d){ if(d.fx&&d.fx.richChoice) m=Math.max(m,d.fx.richChoice);}); return m;}
+function battleCapOf(u){ var cap=0; defsOf(u).forEach(function(d){ if(d.fx&&d.fx.battleCap && (cap===0 || d.fx.battleCap<cap)) cap=d.fx.battleCap;}); return cap;}
+function battleImmune(u){ return anyDef(u,"battleImmunePlayTurn") && u.summoned>=S.globalTurn;}
+function piercesHaisui(u){ return anyDef(u,"pierces");}
+function maxAttacks(u){ return (anyDef(u,"attacksTwicePlayTurn") && u.summoned>=S.globalTurn)? 2: 1;}
+function hasGuardUnit(pIdx){ return S.players[pIdx].field.some(function(u){ return hasGuard(u);});}
+function allHandsRevealed(){ for(var p=0;p<2;p++){ for(var i=0;i<S.players[p].field.length;i++){ if(anyDef(S.players[p].field[i],"revealsAll")) return true;}} return false;}
+function isRevealed(pIdx, card){ return card.revealed || allHandsRevealed();}
+
+/* ---------- オーラ再計算 ---------- */
+var _refreshing=false;
+function recomputeAuras(){
+S.players.forEach(function(p){ p.field.forEach(function(u){
+u.auraAtk=0; u.auraHp=0;
+u.scale = anyDef(u,"scales")? Math.floor(S.players[u.owner].effectDraws/2): 0;
+});});
+S.players.forEach(function(p){
+p.field.forEach(function(src){
+if(anyDef(src,"orderless")){
+var anyA=false, anyZ=false;
+p.field.forEach(function(u){
+if(u===src) return;
+if(hasTrait(u,AKUYUU)){ anyA=true; u.auraAtk+=1; u.auraHp-=1;}
+if(hasTrait(u,ZENYUU)){ anyZ=true; u.auraHp+=1;}
+});
+if(anyA){ src.auraAtk+=1; src.auraHp-=1;}
+if(anyZ){ src.auraHp+=1;}
+}
+defsOf(src).forEach(function(sd){
+if(sd.fx && sd.fx.guardHealthAura) p.field.forEach(function(u){ if(hasGuard(u)) u.auraHp+=sd.fx.guardHealthAura;});
+if(sd.fx && sd.fx.guardStatAura) p.field.forEach(function(u){ if(hasGuard(u)){ u.auraAtk+=sd.fx.guardStatAura; u.auraHp+=sd.fx.guardStatAura;}});
+});
+});
+});
+}
+function refreshAuras(){
+if(_refreshing ||!S || S.over) return; _refreshing=true;
+try{
+while(true){
+recomputeAuras();
+var dead=null;
+for(var pi=0; pi<2 &&!dead; pi++){ for(var i=0;i<S.players[pi].field.length;i++){ if(unitHp(S.players[pi].field[i])<=0){ dead=S.players[pi].field[i]; break;}}}
+if(!dead) break;
+removeUnit(dead,"オーラで体力が尽きた");
+}
+} finally { _refreshing=false;}
+}
+function removeUnit(u, cause){
+var owner=S.players[u.owner], ix=owner.field.indexOf(u);
+if(ix<0) return;
+owner.field.splice(ix,1); owner.grave.push(u.card);
+if(S.selected===u.uid) S.selected=null;
+log(u.owner, defOf(u).name+" が場を離れた（"+cause+"）");
+var d=defOf(u);
+if(d.fx && d.fx.healOnDeath) beginHealChoice(u.owner, d.fx.healOnDeath);
+if(d.fx && d.fx.drawOnDeath) drawEffect(u.owner, d.fx.drawOnDeath);
+if(d.fx && d.fx.deployGuardOnDeath) beginDeckDeployChoice(u.owner, d.fx.deployGuardOnDeath);
+refreshAuras(); validatePending();
+}
+function exileUnit(u){
+var owner=S.players[u.owner], ix=owner.field.indexOf(u);
+if(ix<0) return;
+owner.field.splice(ix,1);
+if(S.selected===u.uid) S.selected=null;
+log(u.owner, defOf(u).name+" はゲームから除外された（破壊ではない）");
+refreshAuras(); validatePending();
+}
+
+/* ---------- 選択待ち（pending） ---------- */
+var _settingPending=false;
+function setPending(){
+if(_settingPending) return; _settingPending=true;
+try{
+while(!S.pending && S.pendingQueue.length){
+var nx=S.pendingQueue.shift();
+if(nx.kind==="resume"){ resumeAttack(nx.ctx); continue;}
+if(!isPendingValid(nx)){ handleInvalidPending(nx); continue;}
+S.pending=nx;
+}
+} finally { _settingPending=false;}
+}
+function pushPending(p){ S.pendingQueue.push(p); setPending();}
+function resolvePending(){ S.pending=null; setPending(); render();}
+function isPendingValid(p){
+if(!p) return false;
+var by=p.by;
+switch(p.kind){
+case "haisui": return true;
+case "discardChosen": return S.players[1-by].hand.length>0;
+case "selfish":
+if(p.needOwn && S.players[by].hand.length===0) p.needOwn=false;
+if(p.needOpp && S.players[1-by].hand.length===0) p.needOpp=false;
+return p.needOwn || p.needOpp;
+case "heal": return S.players[by].field.some(function(u){ return u.damage>0;});
+case "damage": case "selfishHp": return S.players[1-by].field.length>0;
+case "buff": { var f=S.players[by].field; return f.length>0 && Object.keys(p.chosen).length<f.length;}
+case "ownBuff": case "guardGrant": return S.players[by].field.length>0;
+case "deploy": return S.players[by].field.length<FIELD_LIMIT && deployCandidates(by,p.limit).length>0;
+case "deckDeploy": return S.players[by].field.length<FIELD_LIMIT && deckDeployCandidates(by,p.maxCost).length>0;
+case "drawPick": return true;
+case "rich": return!(p.ctx && p.ctx.attackerUid) ||!!findUnitAny(p.ctx.attackerUid);
+case "master": return !!S.masterCtx &&!!findUnitAny(S.masterCtx.sourceUid);
+case "masterCopy": return !!S.masterCtx &&!!findUnitAny(S.masterCtx.sourceUid) && hasMasterCopyTarget(by);
+}
+return true;
+}
+function handleInvalidPending(p){
+log(null,"対象がいなくなったため、選択効果は不発になった");
+if(p.kind==="damage" && p.richCtx) resumeAttack(p.richCtx);
+if(p.kind==="master" || p.kind==="masterCopy") S.masterCtx=null;
+}
+function validatePending(){
+var p=S.pending; if(!p) return;
+if(!isPendingValid(p)){ S.pending=null; handleInvalidPending(p); setPending();}
+}
+function beginHealChoice(owner, amount){
+if(S.players[owner].field.some(function(u){ return u.damage>0;})) pushPending({kind:"heal", by:owner, amount:amount});
+}
+function beginDamageChoice(by, amount, richCtx){
+if(S.players[1-by].field.length>0) pushPending({kind:"damage", by:by, amount:amount, richCtx:richCtx||null});
+}
+function beginBuffChoice(by, amount, n){
+var avail=S.players[by].field.length; if(avail===0) return;
+pushPending({kind:"buff", by:by, amount:amount, left:Math.min(n,avail), chosen:{}});
+}
+function beginSelfish(by){
+var needOwn=S.players[by].hand.length>0, needOpp=S.players[1-by].hand.length>0;
+if(needOwn||needOpp) pushPending({kind:"selfish", by:by, needOwn:needOwn, needOpp:needOpp});
+}
+function deployCandidates(by, limit){
+return S.players[by].hand.filter(function(c){ var cd=CARDS[c.cardId]; return cd.type==="unit" && cd.cost<limit;});
+}
+function beginDeployChoice(by){
+var pl=S.players[by];
+if(pl.field.length>=FIELD_LIMIT) return;
+var limit=pl.hand.length;
+if(deployCandidates(by,limit).length===0) return;
+pushPending({kind:"deploy", by:by, limit:limit});
+}
+function beginGuardGrantChoice(by){
+if(S.players[by].field.length===0) return;
+pushPending({kind:"guardGrant", by:by});
+}
+function deckDeployCandidates(by, maxCost){
+return S.players[by].deck.filter(function(c){ var cd=CARDS[c.cardId]; return cd.type==="unit" && cd.fx && cd.fx.guard && cd.cost<=maxCost;});
+}
+function beginDeckDeployChoice(by, maxCost){
+if(S.players[by].field.length>=FIELD_LIMIT) return;
+if(deckDeployCandidates(by,maxCost).length===0) return;
+pushPending({kind:"deckDeploy", by:by, maxCost:maxCost});
+}
+function beginDrawPick(by, drawCount, keepCount){
+var pl=S.players[by];
+if(pl.deck.length<drawCount){ gameOver(1-by, pname(by)+" がデッキ切れでカードを引けなかった"); return;}
+var pool=[];
+for(var i=0;i<drawCount;i++) pool.push(pl.deck.pop());
+pl.effectDraws+=drawCount;
+pushPending({kind:"drawPick", by:by, pool:pool, left:keepCount});
+refreshAuras();
+}
+function chooseDrawPick(uid){
+var p=S.pending; if(!p || p.kind!=="drawPick") return false;
+var pl=S.players[p.by], ix=-1;
+for(var i=0;i<p.pool.length;i++) if(p.pool[i].uid===uid) ix=i;
+if(ix<0) return false;
+pl.hand.push(p.pool.splice(ix,1)[0]);
+p.left--;
+log(p.by,"三兎追えば二兎得る："+CARDS[pl.hand[pl.hand.length-1].cardId].name+" を手札に加えた（あと"+p.left+"枚）");
+if(p.left<=0){
+p.pool.forEach(function(c){ pl.grave.push(c);});
+log(p.by,"残りは墓地に置かれた");
+resolvePending();
+} else render();
+return true;
+}
+function placeUnit(pIdx, card){
+var pl=S.players[pIdx];
+var u=mkUnit(card, pIdx, S.globalTurn);
+pl.field.push(u);
+var d=CARDS[card.cardId];
+if(d.fx && d.fx.conditionalHaste && pl.field.length>1){ u.haste=true; log(pIdx, d.name+" は速攻を得た");}
+return u;
+}
+function chooseFreeDeploy(uid){
+var p=S.pending; if(!p || p.kind!=="deploy") return false;
+var pl=S.players[p.by], ix=-1;
+for(var i=0;i<pl.hand.length;i++) if(pl.hand[i].uid===uid) ix=i;
+if(ix<0) return false;
+var card=pl.hand[ix], d=CARDS[card.cardId];
+if(d.type!=="unit" || d.cost>=p.limit || pl.field.length>=FIELD_LIMIT) return false;
+S.pending=null;
+pl.hand.splice(ix,1);
+log(p.by,"無数の選択肢ミルキーの効果："+d.name+" をコストを支払わずに場に出した");
+S.stats.plays[d.name]=(S.stats.plays[d.name]||0)+1;
+var u=placeUnit(p.by, card);
+resolveOnPlay(p.by, d, u, false);
+refreshAuras(); validatePending(); setPending(); render();
+return true;
+}
+function chooseDeckDeploy(uid){
+var p=S.pending; if(!p || p.kind!=="deckDeploy") return false;
+var pl=S.players[p.by], ix=-1;
+for(var i=0;i<pl.deck.length;i++) if(pl.deck[i].uid===uid) ix=i;
+if(ix<0) return false;
+var card=pl.deck[ix], d=CARDS[card.cardId];
+if(!(d.type==="unit" && d.fx && d.fx.guard && d.cost<=p.maxCost)) return false;
+if(pl.field.length>=FIELD_LIMIT) return false;
+S.pending=null;
+pl.deck.splice(ix,1);
+log(p.by,"シャインマスカットの効果：デッキから "+d.name+" を場に出した");
+S.stats.plays[d.name]=(S.stats.plays[d.name]||0)+1;
+var u=placeUnit(p.by, card);
+resolveOnPlay(p.by, d, u, false);
+refreshAuras(); validatePending(); setPending(); render();
+return true;
+}
+
+/* ---------- ドロー・ゲージ・勝敗 ---------- */
+function drawCards(pIdx, n){
+var pl=S.players[pIdx];
+for(var i=0;i<n;i++){
+if(pl.deck.length===0){ gameOver(1-pIdx, pname(pIdx)+" がデッキ切れでカードを引けなかった"); return false;}
+pl.hand.push(pl.deck.pop());
+}
+return true;
+}
+function drawEffect(pIdx, n, why){
+var before=S.players[pIdx].deck.length;
+var ok=drawCards(pIdx, n);
+var drawn=before-S.players[pIdx].deck.length;
+S.players[pIdx].effectDraws+=drawn;
+if(why && drawn>0) log(pIdx, why+"：カードを"+drawn+"枚引いた（手札"+S.players[pIdx].hand.length+"枚）");
+if(!S.over) refreshAuras();
+return ok;
+}
+function fetchRandom(pIdx, opts){
+var pl=S.players[pIdx], count=opts.count||1;
+var pool=pl.deck.filter(function(c){ var cd=CARDS[c.cardId];
+return cd.type===opts.type && cd.cost>=(opts.minCost||0) && cd.cost<=(opts.maxCost===undefined?999:opts.maxCost);});
+var got=[];
+for(var i=0;i<count && pool.length;i++){
+var pick=pool[Math.floor(Math.random()*pool.length)];
+pool.splice(pool.indexOf(pick),1); pl.deck.splice(pl.deck.indexOf(pick),1); pl.hand.push(pick); got.push(CARDS[pick.cardId].name);
+}
+if(got.length) log(pIdx,"デッキから "+got.join("、")+" を手札に加えた");
+else log(pIdx,"デッキに対象のカードが残っていなかった");
+return got.length;
+}
+function remainingFor(p){ return GAUGE_MAX - (p===0? S.gauge: -S.gauge);}
+function pushGauge(amount, pushed, opts){
+opts=opts||{};
+if(amount<=0 || S.over) return;
+var limit=(!S.haisuiUsed[pushed] &&!opts.pierce)? GAUGE_MAX-1: GAUGE_MAX;
+var sign=pushed===0? 1: -1, before=S.gauge, t=S.gauge+sign*amount;
+S.gauge = sign>0? Math.min(t,limit): Math.max(t,-limit);
+var moved=Math.abs(S.gauge-before);
+if(moved>0) log(null,"戦線ゲージが "+moved+" 動いた（現在 "+(S.gauge>0?"+":"")+S.gauge+"）");
+else log(null,"戦線ゲージは背水の陣の保護で「残り1」に止まった");
+if(Math.abs(S.gauge)>=GAUGE_MAX){ gameOver(1-pushed,"戦線ゲージを端まで押し切った"); return;}
+if(opts.fromAttack &&!S.haisuiUsed[pushed] && remainingFor(pushed)<=HAISUI_REMAIN){
+S.stats.haisui++;
+log(null,""+pname(pushed)+" のゲージ残りが "+remainingFor(pushed)+" になった。必須発動！");
+pushPending({kind:"haisui", by:pushed});
+}
+}
+function pushBackGauge(p, amount){
+var sign=p===0? -1: 1;
+S.gauge=Math.max(-GAUGE_MAX, Math.min(GAUGE_MAX, S.gauge+sign*amount));
+log(p,"ゲージを "+amount+" 押し戻した（現在 "+(S.gauge>0?"+":"")+S.gauge+"）");
+if(Math.abs(S.gauge)>=GAUGE_MAX) gameOver(p,"押し戻しでゲージが端に届いた");
+}
+function defeatAmount(cost){ return Math.max(1, Math.floor(cost/2));}
+function gameOver(winner, reason){
+if(S.over) return;
+S.over=true; S.winner=winner; S.winReason=reason; S.phase="over"; S.pending=null; S.pendingQueue=[];
+log(null,"対戦終了："+(winner>=0?pname(winner):"引き分け")+"（"+reason+"）");
+render();
+}
+
+/* ---------- ターン進行 ---------- */
+function startTurn(){
+if(!S || S.over) return;
+var pl=S.players[S.active];
+S.globalTurn++; S.turnCount[S.active]++;
+if(!pl.firstTurn) pl.base+=1;
+pl.firstTurn=false;
+pl.avail=pl.base+pl.carry+pl.pendingBonus;
+var bonusNote=pl.pendingBonus>0? "＋予約ボーナス"+pl.pendingBonus: "";
+pl.pendingBonus=0;
+pl.field.forEach(function(u){ u.attacksUsed=0; u.abilityUsed=false;});
+log(S.active,"―― "+pname(S.active)+" のターン"+S.turnCount[S.active]+" 開始（基本"+pl.base+"＋繰越"+pl.carry+bonusNote+" ＝ "+pl.avail+"ポイント）――");
+if(!drawCards(S.active,1)){ render(); return;}
+var snapshot=pl.field.slice();
+for(var i=0;i<snapshot.length;i++){
+if(S.over) break;
+var n=0; defsOf(snapshot[i]).forEach(function(d){ if(d.fx&&d.fx.drawAtTurnStart) n+=d.fx.drawAtTurnStart;});
+if(n>0){ log(S.active, defOf(snapshot[i]).name+" の効果：ターン開始時にカードを"+n+"枚引く"); drawEffect(S.active, n);}
+}
+refreshAuras();
+render();
+}
+function endTurn(){
+if(!S || S.over || S.pending || S.passGate) return;
+if(S.mode!=="2p" && cpuControls(S.active) &&!CPU_ACT) return;
+var pl=S.players[S.active];
+if(pl.hand.length>HAND_LIMIT){ S.discardMode=true; log(S.active,"手札が上限"+HAND_LIMIT+"枚を超えている。"+(pl.hand.length-HAND_LIMIT)+"枚捨てる必要がある"); render(); return;}
+finishEndTurn();
+}
+function finishEndTurn(){
+var pl=S.players[S.active];
+pl.carry=Math.floor(pl.avail/2);
+log(S.active,"ターン終了。残り"+pl.avail+"ポイントの半分 "+pl.carry+" が次ターンへ繰越");
+pl.avail=0; S.discardMode=false; S.selected=null; S.abilityMenu=false;
+S.active=1-S.active;
+if(S.mode==="2p"){ S.passGate=true; S.passFor="turn"; render(); return;}
+startTurn();
+}
+
+/* ---------- カードを出す ---------- */
+function canAct(){ return!!S &&!S.over && S.phase==="play" &&!S.pending &&!S.discardMode &&!S.passGate;}
+function cpuControls(p){ return!!S && (S.mode==="auto" || (S.mode==="cpu" && p===1));}
+function isHumanTurn(){ return S.mode==="2p" || S.active===0;}
+function playCardInternal(pIdx, uid){
+var pl=S.players[pIdx], ix=-1;
+for(var i=0;i<pl.hand.length;i++) if(pl.hand[i].uid===uid) ix=i;
+if(ix<0) return false;
+var card=pl.hand[ix], d=CARDS[card.cardId];
+if(pl.avail<d.cost) return false;
+if(d.type==="unit" && pl.field.length>=FIELD_LIMIT) return false;
+pl.avail-=d.cost; pl.hand.splice(ix,1);
+S.stats.plays[d.name]=(S.stats.plays[d.name]||0)+1;
+log(pIdx, d.name+" を出した（コスト"+d.cost+"）");
+if(d.type==="unit"){ var u=placeUnit(pIdx, card); resolveOnPlay(pIdx, d, u, false);}
+else playTacticInternal(pIdx, card, d);
+refreshAuras(); validatePending();
+return true;
+}
+function applyRegistryEffect(e, pIdx){
+var pl=S.players[pIdx];
+if(e.kind==="draw") drawEffect(pIdx, e.v);
+else if(e.kind==="ramp"){ pl.base+=e.v; log(pIdx,"基本ポイントが+ "+e.v+" された（次ターンから基本"+(pl.base+1)+"）");}
+else if(e.kind==="tempPoints"){ pl.avail+=e.v; log(pIdx,"このターンに使えるポイントが +"+e.v+" された");}
+else if(e.kind==="fetchSmall") fetchRandom(pIdx, {type:"unit", maxCost:e.v, count:1});
+else if(e.kind==="fetchBig") fetchRandom(pIdx, {type:"unit", minCost:e.v, count:1});
+}
+function resolveOnPlay(pIdx, d, sourceUnit, fromCopy){
+var pl=S.players[pIdx], fx=d.fx||{};
+if(fx.discardChosen && S.players[1-pIdx].hand.length>0) pushPending({kind:"discardChosen", by:pIdx});
+if(fx.onPlay && pl.base>=(fx.onPlay.minBase||0)) applyRegistryEffect(fx.onPlay, pIdx);
+if(fx.selfishOnPlay) beginSelfish(pIdx);
+if(fx.healOnPlay) beginHealChoice(pIdx, fx.healOnPlay);
+if(fx.damageOnPlay) beginDamageChoice(pIdx, fx.damageOnPlay);
+if(fx.buffOnPlay) beginBuffChoice(pIdx, fx.buffOnPlay.v, fx.buffOnPlay.n);
+if(fx.freeDeploy) beginDeployChoice(pIdx);
+if(fx.grantsGuardOnPlay) beginGuardGrantChoice(pIdx);
+if(fx.richChoice) pushPending({kind:"rich", by:pIdx, damage:fx.richChoice, ctx:null});
+if(fx.masterChoice &&!fromCopy){
+S.masterCtx={ by:pIdx, sourceUid:sourceUnit?sourceUnit.uid:null, attackerUid:null, isFace:false, defenderUid:null,
+damage:fx.masterChoice.dmg, picksLeft:(pl.base>=fx.masterChoice.extraMinBase?2:1)};
+pushPending({kind:"master", by:pIdx});
+}
+if(fx.selfBuff && pl.base>=fx.selfBuff.minBase && sourceUnit){
+sourceUnit.atkBuff+=fx.selfBuff.atk; sourceUnit.hpBuff+=fx.selfBuff.hp;
+if(fx.selfBuff.points){ pl.avail+=fx.selfBuff.points;}
+log(pIdx, d.name+" は基本ポイント"+fx.selfBuff.minBase+"以上の条件を満たし、攻撃力+"+fx.selfBuff.atk+"・体力最大値+"+fx.selfBuff.hp+"、このターンのポイント+"+fx.selfBuff.points+"を得た");
+}
+}
+function discardFromHandToGrave(pIdx, uid){
+var pl=S.players[pIdx];
+for(var i=0;i<pl.hand.length;i++){ if(pl.hand[i].uid===uid){ var c=pl.hand.splice(i,1)[0]; pl.grave.push(c); return c;}}
+return null;
+}
+function damageAllUnits(pIdx, targets, amount, label){
+targets.forEach(function(u){ u.damage+=amount;});
+log(pIdx, label);
+targets.slice().forEach(function(u){ if(unitHp(u)<=0 && S.players[u.owner].field.indexOf(u)>=0) removeUnit(u,"効果ダメージ");});
+}
+function playTacticInternal(pIdx, card, d){
+var pl=S.players[pIdx], fx=d.fx||{};
+pl.grave.push(card);
+if(fx.kind==="draw") drawEffect(pIdx, fx.v, d.name);
+else if(fx.kind==="ramp"){ pl.base+=fx.v; log(pIdx,"基本ポイントが +"+fx.v+" された（次の自分のターンから効く）");}
+else if(fx.kind==="pushback") pushBackGauge(pIdx, fx.v);
+else if(fx.kind==="discardRandom"){
+var opp=S.players[1-pIdx];
+if(opp.hand.length){ var pick=opp.hand[Math.floor(Math.random()*opp.hand.length)]; discardFromHandToGrave(1-pIdx, pick.uid); log(pIdx,"相手の手札から "+CARDS[pick.cardId].name+" がランダムに捨てられた");}
+else log(pIdx,"相手の手札は空だった");
+}
+else if(fx.kind==="fetchBig") fetchRandom(pIdx, {type:"unit", minCost:fx.v, count:1});
+else if(fx.kind==="fetchTactics") fetchRandom(pIdx, {type:"tactic", count:fx.v});
+else if(fx.kind==="drawPick") beginDrawPick(pIdx, fx.v, fx.keep);
+else if(fx.kind==="targetDamage"){ if(S.players[1-pIdx].field.length>0) beginDamageChoice(pIdx, fx.v); else log(pIdx,"対象の相手ユニットがいないため不発");}
+else if(fx.kind==="sake"){ if(pl.field.length>0) pushPending({kind:"ownBuff", by:pIdx}); else log(pIdx,"対象の自分のユニットがいないため不発");}
+else if(fx.kind==="damageAllOpp"){
+var ts=S.players[1-pIdx].field.slice();
+if(ts.length) damageAllUnits(pIdx, ts, fx.v, d.name+"：相手のユニット全てに"+fx.v+"ダメージ");
+else log(pIdx,"相手の場にユニットはいなかった");
+}
+else if(fx.kind==="damageAllUnits"){
+var all=[]; S.players.forEach(function(p){ p.field.forEach(function(u){ all.push(u);});});
+if(all.length) damageAllUnits(pIdx, all, fx.v, d.name+"：お互いのユニット全てに"+fx.v+"ダメージ");
+}
+else if(fx.kind==="destroyRandom"){
+var of=S.players[1-pIdx].field;
+if(of.length){ var victim=of[Math.floor(Math.random()*of.length)]; log(pIdx, d.name+"："+defOf(victim).name+" がランダムに破壊された"); removeUnit(victim,"効果による破壊");}
+else log(pIdx,"相手の場にユニットはいなかった");
+}
+}
+
+/* ---------- 攻撃 ---------- */
+function canAttackFace(u){
+if(!canAct() ||!u || u.owner!==S.active) return false;
+if(u.attacksUsed>=maxAttacks(u)) return false;
+if(u.summoned>=S.globalTurn &&!u.haste) return false;
+if(anyDef(u,"onlyUnits")) return false;
+if(hasGuardUnit(1-S.active)) return false;
+return true;
+}
+function canAttackUnit(u, v){
+if(!canAct() ||!u ||!v || u.owner!==S.active || v.owner===S.active) return false;
+if(u.attacksUsed>=maxAttacks(u)) return false;
+if(u.summoned>=S.globalTurn &&!u.haste &&!anyDef(u,"canAttackUnits")) return false;
+if(!hasGuard(v) && hasGuardUnit(v.owner)) return false;
+return true;
+}
+function initiateFace(u){
+if(!canAttackFace(u)) return;
+var d=defOf(u);
+if(d.fx && d.fx.masterChoice){ beginMasterAttack(u, true, null); return;}
+var rd=effRichDamage(u);
+if(rd>0){ pushPending({kind:"rich", by:S.active, damage:rd, ctx:{attackerUid:u.uid, isFace:true, defenderUid:null}}); render(); return;}
+resolveFaceAttack(u);
+}
+function initiateUnit(u, v){
+if(!canAttackUnit(u, v)) return;
+var d=defOf(u);
+if(d.fx && d.fx.masterChoice){ beginMasterAttack(u, false, v); return;}
+var rd=effRichDamage(u);
+if(rd>0){ pushPending({kind:"rich", by:S.active, damage:rd, ctx:{attackerUid:u.uid, isFace:false, defenderUid:v.uid}}); render(); return;}
+resolveUnitAttack(u, v);
+}
+function beginMasterAttack(u, isFace, v){
+var pl=S.players[S.active], d=defOf(u);
+S.masterCtx={ by:S.active, sourceUid:u.uid, attackerUid:u.uid, isFace:isFace, defenderUid:v?v.uid:null,
+damage:d.fx.masterChoice.dmg, picksLeft:(pl.base>=d.fx.masterChoice.extraMinBase?2:1)};
+log(S.active, defOf(u).name+" の攻撃宣言。まず使う効果を選ぶ");
+pushPending({kind:"master", by:S.active});
+render();
+}
+function resumeAttack(ctx){
+if(!ctx ||!ctx.attackerUid) return;
+var attacker=findUnitAny(ctx.attackerUid);
+if(!attacker) return;
+if(ctx.isFace) resolveFaceAttack(attacker);
+else { var def=ctx.defenderUid?findUnitAny(ctx.defenderUid):null; if(def) resolveUnitAttack(attacker, def); else log(attacker.owner,"攻撃対象が場を離れていたため、攻撃は不発になった（攻撃回数は消費しない）");}
+}
+function afterAttackCleanup(u){
+if(S.over) return;
+var owner=S.players[u.owner];
+if(owner.field.indexOf(u)<0) return;
+if(u.destroyAfter){ removeUnit(u,"酒！酒！酒！の効果で破壊");}
+else if(defOf(u).fx && defOf(u).fx.returnsToHand){
+owner.field.splice(owner.field.indexOf(u),1); owner.hand.push(u.card);
+log(u.owner, defOf(u).name+" は攻撃した後、手札に戻った");
+refreshAuras(); validatePending();
+}
+}
+function resolveFaceAttack(attacker){
+attacker.attacksUsed++; S.stats.attacks++;
+var atk=atkWhenAttacking(attacker);
+log(S.active, defOf(attacker).name+" が相手プレイヤーを攻撃（実効攻撃力"+atk+"）");
+pushGauge(atk, 1-S.active, {pierce:piercesHaisui(attacker), fromAttack:true});
+afterAttackCleanup(attacker);
+S.selected=null; S.abilityMenu=false; render();
+}
+function resolveUnitAttack(attacker, defender){
+attacker.attacksUsed++; S.stats.attacks++;
+var dmgV=battleImmune(defender)?0:atkWhenAttacking(attacker);
+var capV=battleCapOf(defender); if(capV>0) dmgV=Math.min(dmgV,capV);
+var dmgA=battleImmune(attacker)?0:counterAtk(defender);
+var capA=battleCapOf(attacker); if(capA>0) dmgA=Math.min(dmgA,capA);
+defender.damage+=dmgV; attacker.damage+=dmgA;
+log(S.active, defOf(attacker).name+"（"+dmgV+"）が "+defOf(defender).name+"（反撃"+dmgA+"）を攻撃");
+var defDied=unitHp(defender)<=0, atkDied=unitHp(attacker)<=0;
+var delta=0;
+if(defDied) delta += (defender.owner===0?1:-1)*defeatAmount(defOf(defender).cost);
+if(atkDied) delta += (attacker.owner===0?1:-1)*defeatAmount(defOf(attacker).cost);
+if(defDied) removeUnit(defender,"戦闘で破壊");
+if(atkDied) removeUnit(attacker,"戦闘で破壊");
+if(delta!==0){ log(null,"戦闘撃破でゲージが動く（差分 "+Math.abs(delta)+"）"); pushGauge(Math.abs(delta), delta>0?0:1, {pierce:piercesHaisui(attacker)&&defDied, fromAttack:true});}
+if(defDied && S.players[attacker.owner].field.indexOf(attacker)>=0){
+var heal=0; defsOf(attacker).forEach(function(d){ if(d.fx&&d.fx.healOnKill) heal=Math.max(heal,d.fx.healOnKill);});
+if(heal>0){ attacker.damage=Math.max(0,attacker.damage-heal); log(attacker.owner, defOf(attacker).name+" は戦闘で倒したので体力を"+heal+"回復した");}
+}
+afterAttackCleanup(attacker);
+S.selected=null; S.abilityMenu=false; render();
+}
+
+/* ---------- 器用富豪やーや / 手練手管やーや の選択 ---------- */
+function chooseRichMode(mode){
+var p=S.pending; if(!p || p.kind!=="rich") return false;
+var by=p.by;
+if(mode===2){
+if(S.players[1-by].field.length===0) return false;
+S.pending={kind:"damage", by:by, amount:p.damage, richCtx:p.ctx||null};
+log(by,"器用富豪やーや相手のユニット1体に"+p.damage+"ダメージ。対象を選ぶ");
+render(); return true;
+}
+if(mode!==1 && mode!==3) return false;
+S.pending=null;
+if(mode===1){ log(by,"器用富豪やーやカードを1枚引く"); drawEffect(by,1);}
+else { S.players[by].avail+=1; log(by,"器用富豪やーやこのターンに使えるポイント+1");}
+if(p.ctx) resumeAttack(p.ctx);
+setPending(); render();
+return true;
+}
+function hasMasterCopyTarget(by){
+var ctx=S.masterCtx; if(!ctx) return false;
+var pl=S.players[by], src=findUnit(by, ctx.sourceUid);
+if(!src) return false;
+var selfId=src.cardId;
+if(pl.field.some(function(u){ return u!==src && u.cardId!==selfId;})) return true;
+if(pl.grave.some(function(c){ return CARDS[c.cardId].type==="unit" && c.cardId!==selfId;})) return true;
+if(pl.hand.some(function(c){ return CARDS[c.cardId].type==="unit" && c.cardId!==selfId;})) return true;
+return false;
+}
+function chooseMasterMode(mode){
+var p=S.pending; if(!p || p.kind!=="master" ||!S.masterCtx) return false;
+var by=p.by, ctx=S.masterCtx;
+if(mode===4){
+if(!hasMasterCopyTarget(by)) return false;
+S.pending={kind:"masterCopy", by:by};
+log(by,"手練手管やーやコピーするユニットを選ぶ");
+render(); return true;
+}
+if(mode!==1 && mode!==2 && mode!==3) return false;
+S.pending=null;
+if(mode===1){ log(by,"手練手管やーやカードを2枚引く"); drawEffect(by,2);}
+else if(mode===2){
+var ts=S.players[1-by].field.slice();
+log(by,"手練手管やーや相手のユニット全てに"+ctx.damage+"ダメージ");
+ts.forEach(function(u){ u.damage+=ctx.damage;});
+ts.forEach(function(u){ if(unitHp(u)<=0 && S.players[u.owner].field.indexOf(u)>=0) removeUnit(u,"効果ダメージ");});
+}
+else { S.players[by].avail+=2; log(by,"手練手管やーやこのターンに使えるポイント+2");}
+afterMasterPick();
+return true;
+}
+function afterMasterPick(){
+var ctx=S.masterCtx; if(!ctx) { setPending(); render(); return;}
+ctx.picksLeft--;
+if(ctx.picksLeft>0){ pushPending({kind:"master", by:ctx.by});}
+else if(ctx.attackerUid){ pushPending({kind:"resume", ctx:ctx}); S.masterCtx=null;}
+else S.masterCtx=null;
+setPending(); render();
+}
+function chooseMasterCopy(zone, uid){
+var p=S.pending; if(!p || p.kind!=="masterCopy" ||!S.masterCtx) return false;
+var by=p.by, ctx=S.masterCtx, pl=S.players[by];
+var src=findUnit(by, ctx.sourceUid);
+if(!src) return false;
+var copiedId=null;
+if(zone==="field"){
+var u=findUnit(by, uid);
+if(!u || u===src || u.cardId===src.cardId) return false;
+copiedId=u.cardId; exileUnit(u);
+} else if(zone==="grave"){
+var gi=-1; for(var i=0;i<pl.grave.length;i++) if(pl.grave[i].uid===uid) gi=i;
+if(gi<0) return false;
+var gc=pl.grave[gi];
+if(CARDS[gc.cardId].type!=="unit" || gc.cardId===src.cardId) return false;
+copiedId=gc.cardId; pl.grave.splice(gi,1);
+log(by, CARDS[copiedId].name+"（墓地）を除外した");
+} else if(zone==="hand"){
+var hi=-1; for(var j=0;j<pl.hand.length;j++) if(pl.hand[j].uid===uid) hi=j;
+if(hi<0) return false;
+var hc=pl.hand[hi];
+if(CARDS[hc.cardId].type!=="unit" || hc.cardId===src.cardId) return false;
+copiedId=hc.cardId; pl.hand.splice(hi,1);
+log(by, CARDS[copiedId].name+"（手札）を除外した");
+}
+if(!copiedId) return false;
+S.pending=null;
+src.copiedDef=copiedId;
+var cd=CARDS[copiedId];
+if(cd.fx && cd.fx.conditionalHaste && pl.field.length>1) src.haste=true;
+log(by,"手練手管やーや は "+cd.name+" の登場時効果を使い、能力をコピーした");
+refreshAuras();
+resolveOnPlay(by, cd, src, true);
+refreshAuras(); validatePending();
+afterMasterPick();
+return true;
+}
+function useSuperAbility(choice, u){
+if(!u) u=findUnit(S.active, S.selected);
+if(!u) return;
+if(!defsOf(u).some(function(d){ return d.fx && d.fx.activated==="selfish";}) || u.abilityUsed ||!canAct()) return;
+if(u.owner!==S.active) return;
+var owner=S.active, opp=1-owner;
+if(choice===1){
+u.abilityUsed=true; log(owner,"超絶自己中にあくろカードを1枚引く");
+drawEffect(owner,1); if(!S.over) beginSelfish(owner);
+} else if(choice===2){
+if(S.players[opp].field.length===0) return;
+u.abilityUsed=true; log(owner,"超絶自己中にあくろ相手ユニットの体力最大値-1の対象を選ぶ");
+pushPending({kind:"selfishHp", by:owner});
+} else if(choice===3){
+u.abilityUsed=true; log(owner,"超絶自己中にあくろ戦線ゲージを相手側に1進める");
+pushGauge(1, opp, {pierce:true, fromAttack:false});
+}
+S.abilityMenu=false; render();
+}
+
+/* ---------- 背水の陣 ---------- */
+var HAISUI_DEFS={
+pushback:{name:"ゲージを3押し戻す", desc:"戦線ゲージを自分の側に3戻す"},
+draw:{name:"カードを4枚引く", desc:"手札を一気に補充する"},
+points:{name:"次のターンのポイント+3", desc:"次の自分のターンに使えるポイントが3増える"}
+};
+function chooseHaisui(action){
+var p=S.pending; if(!p || p.kind!=="haisui") return;
+if(S.haisuiTaken[action]!==undefined) return;
+var by=p.by;
+S.haisuiUsed[by]=true; S.haisuiTaken[action]=by;
+log(by,"背水の陣：「"+HAISUI_DEFS[action].name+"」を選んだ");
+S.pending=null;
+if(action==="pushback") pushBackGauge(by,3);
+else if(action==="draw") drawEffect(by,4,"背水の陣");
+else if(action==="points"){ S.players[by].pendingBonus+=3; log(by,"次のターンのポイント+3が予約された");}
+setPending();
+render();
+}
+
+/* ---------- クリック処理 ---------- */
+function humanBlocked(){
+if(!S || S.passGate) return true;
+if(S.mode==="auto") return true;
+if(S.mode==="cpu"){
+if(S.pending) return S.pending.by===1;
+return S.active===1;
+}
+return false;
+}
+function clickHandCard(pIdx, uid){
+if(humanBlocked() &&!CPU_ACT) return;
+var p=S.pending;
+if(p){
+if(p.kind==="discardChosen" && pIdx===1-p.by){
+var c=discardFromHandToGrave(pIdx, uid);
+if(c){ log(p.by,"相手の手札から "+CARDS[c.cardId].name+" を選んで捨てた"); resolvePending();}
+return;
+}
+if(p.kind==="selfish"){
+if(p.needOwn && pIdx===p.by){ var c1=discardFromHandToGrave(pIdx,uid); if(c1){ log(p.by,"自分の手札から "+CARDS[c1.cardId].name+" を捨てた"); p.needOwn=false;}}
+else if(p.needOpp && pIdx===1-p.by){ var c2=discardFromHandToGrave(pIdx,uid); if(c2){ log(p.by,"相手の手札から "+CARDS[c2.cardId].name+" を捨てた"); p.needOpp=false;}}
+else return;
+if(!p.needOwn &&!p.needOpp) resolvePending(); else render();
+return;
+}
+if(p.kind==="deploy" && pIdx===p.by){ chooseFreeDeploy(uid); return;}
+return;
+}
+if(S.discardMode && pIdx===S.active){
+var dc=discardFromHandToGrave(pIdx, uid);
+if(dc){ log(S.active,"手札上限のため "+CARDS[dc.cardId].name+" を捨てた"); if(S.players[S.active].hand.length<=HAND_LIMIT){ S.discardMode=false; log(S.active,"手札が上限以下になった。ターン終了できる");} render();}
+return;
+}
+if(pIdx===S.active && canAct() && (CPU_ACT || isHumanTurn())){ if(playCardInternal(pIdx, uid)) render();}
+}
+function clickFieldUnit(ownerIdx, uid){
+if(humanBlocked() &&!CPU_ACT) return;
+var u=findUnit(ownerIdx, uid); if(!u) return;
+var p=S.pending;
+if(p){
+if(p.kind==="heal" && ownerIdx===p.by && u.damage>0){ u.damage=Math.max(0,u.damage-p.amount); log(p.by,defOf(u).name+" の体力を"+p.amount+"回復した"); resolvePending(); return;}
+if(p.kind==="damage" && ownerIdx===1-p.by){
+var amt=p.amount, richCtx=p.richCtx;
+u.damage+=amt; log(p.by,defOf(u).name+" に"+amt+"ダメージを与えた");
+if(unitHp(u)<=0) removeUnit(u,"効果ダメージ");
+S.pending=null;
+if(richCtx) resumeAttack(richCtx);
+setPending(); render();
+return;
+}
+if(p.kind==="selfishHp" && ownerIdx===1-p.by){
+u.hpRed+=1; log(p.by,defOf(u).name+" の体力の最大値を-1した");
+if(unitHp(u)<=0) removeUnit(u,"効果で体力が尽きた");
+resolvePending(); return;
+}
+if(p.kind==="buff" && ownerIdx===p.by &&!p.chosen[uid]){
+p.chosen[uid]=1; u.atkBuff+=p.amount; p.left--;
+log(p.by,"ゲーマーニトグリの効果："+defOf(u).name+" の攻撃力を+"+p.amount+"した（残り"+p.left+"体）");
+if(p.left<=0) resolvePending(); else render();
+return;
+}
+if(p.kind==="ownBuff" && ownerIdx===p.by){
+u.atkBuff+=2; u.hpRed+=2; u.destroyAfter=true;
+log(p.by,"酒！酒！酒！："+defOf(u).name+" は攻撃力+2、体力最大値-2、攻撃後に破壊される");
+if(unitHp(u)<=0) removeUnit(u,"酒！酒！酒！で体力が尽きた");
+resolvePending(); return;
+}
+if(p.kind==="guardGrant" && ownerIdx===p.by){
+u.grantedGuard=true;
+log(p.by,"ゲーマーマスカットの効果："+defOf(u).name+" に守護を付与した");
+refreshAuras(); resolvePending(); return;
+}
+return;
+}
+if(!canAct() ||!(CPU_ACT || isHumanTurn())) return;
+if(ownerIdx===1-S.active && S.selected){ var atk=findUnit(S.active, S.selected); if(atk) initiateUnit(atk, u); return;}
+if(ownerIdx===S.active){
+if(S.selected===uid){ S.selected=null; S.abilityMenu=false;} else { S.selected=uid; S.abilityMenu=false;}
+render();
+}
+}
+
+/* ---------- マリガン ---------- */
+function doMulligan(redraw){
+var pl=S.players[S.mulliganTurn];
+if(redraw){
+var n=pl.hand.length; pl.deck=shuffle(pl.deck.concat(pl.hand)); pl.hand=[];
+for(var i=0;i<n;i++) pl.hand.push(pl.deck.pop());
+log(pl.idx,"マリガン：手札を全部引き直した");
+} else log(pl.idx,"マリガン：手札をキープした");
+pl.mulliganUsed=true;
+if(S.mulliganTurn===0){
+S.mulliganTurn=1;
+if(S.mode==="cpu"){ cpuMulligan(1); S.phase="play"; startTurn();}
+else if(S.mode==="auto"){ cpuMulligan(1); S.phase="play"; startTurn();}
+else { S.passGate=true; S.passFor="mulligan"; render();}
+} else {
+S.phase="play";
+if(S.mode==="2p"){ S.passGate=true; S.passFor="start"; render();}
+else startTurn();
+}
+}
+function cpuMulligan(pIdx){
+var pl=S.players[pIdx];
+var has=pl.hand.some(function(c){ var d=CARDS[c.cardId]; return d.type==="unit" && d.cost<=3;});
+if(!has){ var n=pl.hand.length; pl.deck=shuffle(pl.deck.concat(pl.hand)); pl.hand=[]; for(var i=0;i<n;i++) pl.hand.push(pl.deck.pop()); log(pIdx,"マリガン：手札を全部引き直した");}
+else log(pIdx,"マリガン：手札をキープした");
+pl.mulliganUsed=true;
+}
+function passGateOk(){
+S.passGate=false;
+if(S.passFor==="turn" || S.passFor==="start"){ S.passFor=""; startTurn();}
+else render();
+}
+</script>
+<script>
+(function(){
+var input=document.getElementById('titlePlayerName');
+try{var saved=localStorage.getItem('niakuro-player-name');if(saved)input.value=saved;}catch(e){}
+function saveName(){var name=input.value.trim();if(name){PLAYER_NAME=name;try{localStorage.setItem('niakuro-player-name',name);}catch(e){}}}
+input.addEventListener('change',saveName);input.addEventListener('blur',saveName);
+async function connectRoom(){if(roomConnection)return roomConnection;roomConnection=new signalR.HubConnectionBuilder().withUrl('/gameHub').withAutomaticReconnect().build();roomConnection.on('roomState',function(s){renderLobby(s);});await roomConnection.start();return roomConnection;}
+function renderLobby(s){roomStarted=!!s.started;if(!roomStarted){var list=(s.players||[]);document.getElementById('roomPlayers').innerHTML=list.map(function(p){return '<div>'+esc(p.name)+' — '+esc(p.deckId)+'</div>';}).join('');document.getElementById('roomStatus').textContent=list.length>=2?'対戦相手が入りました。開始できます。':'対戦相手を待っています。';}else{ROOM_NAMES[0]=PLAYER_NAME||'プレイヤー1';document.getElementById('roomStatus').textContent='対戦が開始されました。';showView('battle');newGame('2p');}}
+async function createRoom(){saveName();try{await connectRoom();roomCode=await roomConnection.invoke('CreateRoom',PLAYER_NAME,document.getElementById('roomDeck').value);document.getElementById('roomLobby').classList.remove('hidden');document.getElementById('roomCodeLabel').textContent='ルームコード：'+roomCode;}catch(e){document.getElementById('roomStatus').textContent=e.message||String(e);}}
+async function joinRoom(){saveName();var code=document.getElementById('roomCode').value.trim().toUpperCase();if(!code){document.getElementById('roomStatus').textContent='ルームコードを入力してください。';return;}try{await connectRoom();await roomConnection.invoke('JoinRoom',code,PLAYER_NAME,document.getElementById('roomDeck').value);roomCode=code;document.getElementById('roomLobby').classList.remove('hidden');document.getElementById('roomCodeLabel').textContent='ルームコード：'+roomCode;}catch(e){document.getElementById('roomStatus').textContent=e.message||String(e);}}
+async function startRoom(){try{await roomConnection.invoke('StartRoom',roomCode);}catch(e){document.getElementById('roomStatus').textContent=e.message||String(e);}}
+document.addEventListener('click',function(e){var t=e.target.closest('[data-act]');if(!t)return;var act=t.getAttribute('data-act');if(act==='nav-room'){saveName();showView('room');}else if(act==='room-create'){createRoom();}else if(act==='room-join'){joinRoom();}else if(act==='room-start'){startRoom();}});
+})();
+</script>

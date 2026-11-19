@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- このファイルについて: ルールエンジンの動作確認用コンソールアプリの設定。
+       Unity には入れない、開発時だけのテスト用。 -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Core/NiakuroTcg.Core.csproj" />
+  </ItemGroup>
+</Project>

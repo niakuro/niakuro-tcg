@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: niakuro-tcg
+    runtime: docker
+    plan: free
+    healthCheckPath: /
