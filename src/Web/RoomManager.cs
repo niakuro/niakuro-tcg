@@ -199,12 +199,31 @@ public sealed class RoomManager
         deckCount = p.Deck.Count
     };
 
-    private static object ViewCard(CardInstance c) => new { c.InstanceId, name = c.Definition.Name, cost = c.Definition.Cost, type = c.Definition.Type.ToString() };
+    private static object ViewCard(CardInstance c)
+    {
+        var unit = c.Definition as UnitCardDefinition;
+        return new
+        {
+            c.InstanceId,
+            id = c.Definition.Id,
+            name = c.Definition.Name,
+            cost = c.Definition.Cost,
+            type = c.Definition.Type.ToString(),
+            abilityText = unit?.AbilityText,
+            traits = unit?.Traits,
+            attack = unit?.Attack,
+            health = unit?.Health
+        };
+    }
+
     private static object ViewUnit(UnitState u, GameEngine engine) => new
     {
         instanceId = u.Instance.InstanceId,
+        id = u.Definition.Id,
         name = u.Definition.Name,
         cost = u.Definition.Cost,
+        abilityText = u.Definition.AbilityText,
+        traits = u.Definition.Traits,
         attack = engine.EffectiveAttackWhenAttacking(u),
         currentHealth = u.CurrentHealth,
         maxHealth = u.MaxHealth,
