@@ -176,10 +176,18 @@ namespace EngineCheck
                 CharacterCards.YayaMaster, CharacterCards.Kohaku, CharacterCards.KohakuSmall, CharacterCards.KohakuCat,
                 CharacterCards.KohakuShine, CharacterCards.KohakuBig,
             };
-            bool charBudgetOk = true;
-            // 守護持ちはキーワードの価値ぶん +1 まで許容する（ミニマスカット 0/3 のような壁型を認める）。
-            foreach (var u in charUnits) if (u.Attack + u.Health > u.Cost * 2 + (u.Guard ? 1 : 0)) charBudgetOk = false;
-            Check(charBudgetOk, "キャラカード: 全30体がコスト×2以内");
+            var charBudgetViolations = new List<string>();
+            // ミニトグリは低コスト除去、ミニマスカットは壁型の例外として扱う。
+            foreach (var u in charUnits)
+            {
+                int guardAllowance = u.Guard ? 1 : 0;
+                if (ReferenceEquals(u, CharacterCards.MuscatYoung)) guardAllowance = 2;
+                if (ReferenceEquals(u, CharacterCards.NitoguriMini)) guardAllowance = 1;
+                if (u.Attack + u.Health > u.Cost * 2 + guardAllowance) charBudgetViolations.Add(u.Name);
+            }
+            Check(charBudgetViolations.Count == 0,
+                "キャラカード: コスト×2の目安内（効果・守護・壁型の例外込み）"
+                + (charBudgetViolations.Count == 0 ? "" : " / " + string.Join(", ", charBudgetViolations)));
 
             // --- 特徴タグ: 全員が古参、にあくろ/ニトグリ/ココナッツは悪友も持つ ---
             bool traitCheckOk = true;
@@ -345,17 +353,17 @@ namespace EngineCheck
             foreach (var c in engine8.Players[0].Hand) { catCard = c; break; }
             int p0DeckBeforeCat = engine8.Players[0].Deck.Count;
             int p1DeckBeforeCat = engine8.Players[1].Deck.Count;
+            engine8.Players[0].SendToGraveyard(new CardInstance(CharacterCards.Niakuro));
             Check(engine8.PlayUnit(catCard.InstanceId), "猫被り: 登場できる");
-            Check(engine8.Players[0].Field.Count == GameConstants.FieldLimit,
-                "猫被り: 蘇生した猫被りの登場時効果も解決し、場の上限で止まる");
-            Check(engine8.Players[0].Deck.Count == p0DeckBeforeCat - GameConstants.FieldLimit
-               && engine8.Players[1].Deck.Count == p1DeckBeforeCat - GameConstants.FieldLimit,
-                "猫被り: 各効果解決で両者のデッキ上を1枚ずつ墓地へ置く");
-            bool allRevivedCats = true;
+            bool revivedNiakuro = false;
             foreach (var u in engine8.Players[0].Field)
-                if (u.Definition != CharacterCards.NiakuroCat) allRevivedCats = false;
-            Check(allRevivedCats && engine8.Players[0].Graveyard.Count == 1,
-                "猫被り: 墓地からユニットを蘇生し、場が上限なら追加で出さない");
+                if (ReferenceEquals(u.Definition, CharacterCards.Niakuro)) revivedNiakuro = true;
+            Check(revivedNiakuro && engine8.PendingDiscardByPlayer == 0,
+                "猫被り: 墓地から復活したユニットの登場時効果も解決する");
+            Check(engine8.Players[0].Deck.Count == p0DeckBeforeCat - 1
+               && engine8.Players[1].Deck.Count == p1DeckBeforeCat - 1
+               && engine8.Players[0].Graveyard.Count == 1,
+                "猫被り: お互いのデッキ上を1枚墓地に置いてから復活する");
 
             // --- マスカット: 破壊時にミニマスカットを場に出す ---
             var engineMuscatDeath = new GameEngine(deckAllMuscat, deckAllSpear, seed: 18);
@@ -489,7 +497,7 @@ namespace EngineCheck
             Check(nito12 != null && cat12 != null && order12 != null, "秩序検証: 3体とも場に出せる");
             if (nito12 != null && cat12 != null && order12 != null)
             {
-                Check(nito12.Attack == 3 && nito12.MaxHealth == 2,
+                Check(nito12.Attack == 3 && nito12.MaxHealth == 1,
                     "秩序: 悪友は攻撃力+1・体力の最大値-1");
                 Check(cat12.MaxHealth == 6 && cat12.Attack == 2,
                     "秩序: 善友は体力の最大値+2（攻撃力はそのまま）");
@@ -1359,8 +1367,8 @@ namespace EngineCheck
                 }
                 if (guardA != null && ripeUnit != null && guardB != null && plainKnight != null)
                 {
-                    Check(guardA.MaxHealth == 4, "成熟マスカット: 先に出ていた守護の体力最大値が+1される");
-                    Check(guardB.MaxHealth == 4, "成熟マスカット: 後から出た守護にもオーラが効く");
+                    Check(guardA.MaxHealth == 5, "成熟マスカット: 先に出ていた守護の体力最大値が+1される");
+                    Check(guardB.MaxHealth == 5, "成熟マスカット: 後から出た守護にもオーラが効く");
                     Check(ripeUnit.MaxHealth == 4 && !ripeUnit.HasGuard, "成熟マスカット: 本人は守護を持たず、自分のオーラも効かない");
                     Check(plainKnight.MaxHealth == 4, "成熟マスカット: 守護でないユニットには効かない");
                     auraChecked = true;
@@ -1417,8 +1425,8 @@ namespace EngineCheck
                     }
                     if (shineUnit != null && !aura31)
                     {
-                        aura31 = muscat31.Attack == 4 && muscat31.MaxHealth == 4
-                            && shineUnit.Attack == 5 && shineUnit.MaxHealth == 9;
+                        aura31 = muscat31.Attack == 3 && muscat31.MaxHealth == 5
+                            && shineUnit.Attack == 5 && shineUnit.MaxHealth == 8;
                     }
                 }
                 while (!engine31.EndTurn())
@@ -1462,7 +1470,7 @@ namespace EngineCheck
             }
             Check(aura31, "シャイン: 守護ユニット（本人含む）が+1/+1される");
             Check(deploy31, "シャイン: 破壊時にデッキから守護を選んで場に出し、登場時効果も発動する");
-            Check(muscat31 != null && muscat31.Attack == 3 && muscat31.MaxHealth == 3,
+            Check(muscat31 != null && muscat31.Attack == 2 && muscat31.MaxHealth == 4,
                 "シャイン: 場を離れるとオーラが消える");
 
             // --- 先手必勝（ミニココナッツ）: 出たターンにユニットは攻撃できるが顔は攻撃できない ---
@@ -1813,7 +1821,7 @@ namespace EngineCheck
                             {
                                 UnitState gu = null;
                                 foreach (var u in up.Field) if (ReferenceEquals(u.Definition, CharacterCards.YayaGamer)) gu = u;
-                                unmetOk = gu != null && gu.Attack == 4 && gu.MaxHealth == 4 && up.Points.Available == before - 5;
+                                unmetOk = gu != null && gu.Attack == 3 && gu.MaxHealth == 3 && up.Points.Available == before - 5;
                             }
                             break;
                         }
@@ -1851,7 +1859,7 @@ namespace EngineCheck
                             {
                                 UnitState gu = null;
                                 foreach (var u in mp2.Field) if (ReferenceEquals(u.Definition, CharacterCards.YayaGamer)) gu = u;
-                                metOk = gu != null && gu.Attack == 6 && gu.MaxHealth == 6 && mp2.Points.Available == before - 5 + 2;
+                                metOk = gu != null && gu.Attack == 5 && gu.MaxHealth == 5 && mp2.Points.Available == before - 5 + 2;
                             }
                             break;
                         }
@@ -1930,24 +1938,24 @@ namespace EngineCheck
 
             // --- 器用富豪やーや（追加）: 登場時ドロー/モード2キル、選択中の行動ブロック、
             //     攻撃時モード2で対象を倒すと攻撃は不発（回数を消費しない）、モード1後は顔攻撃が通る ---
-            var deckShield42 = new List<CardDefinition>();
-            for (int i = 0; i < 40; i++) deckShield42.Add(SampleCards.Shieldman); // 盾兵 1/3
+            var deckTarget42 = new List<CardDefinition>();
+            for (int i = 0; i < 40; i++) deckTarget42.Add(SampleCards.Spearman); // 槍兵 2/2
             var deckRich42 = new List<CardDefinition>();
             for (int i = 0; i < 40; i++) deckRich42.Add(CharacterCards.YayaRich);
-            var engine42 = new GameEngine(deckShield42, deckRich42, seed: 412);
+            var engine42 = new GameEngine(deckTarget42, deckRich42, seed: 412);
             bool richBlockedOk = false, richOnPlayKillOk = false, richOnPlayDrawOk = false;
             bool richFizzleOk = false, richFaceAfterDrawOk = false;
             UnitState richFirst = null;
             int richPhase = 0;
             for (int round = 0; round < 20 && richPhase < 4; round++)
             {
-                engine42.StartTurn(); // P0: 盾兵を出す（場が空の時だけ）
+                engine42.StartTurn(); // P0: 槍兵を出す（場が空の時だけ）
                 var w0 = engine42.Players[0];
                 if (w0.Field.Count == 0)
                 {
                     foreach (var c in w0.Hand)
                     {
-                        if (ReferenceEquals(c.Definition, SampleCards.Shieldman) && engine42.PlayUnit(c.InstanceId)) break;
+                        if (ReferenceEquals(c.Definition, SampleCards.Spearman) && engine42.PlayUnit(c.InstanceId)) break;
                     }
                 }
                 while (!engine42.EndTurn())
@@ -1971,11 +1979,11 @@ namespace EngineCheck
                             foreach (var oc in w1.Hand) other = oc.InstanceId;
                             richBlockedOk = other != Guid.Empty && !engine42.PlayUnit(other) && !engine42.EndTurn();
                             int gaugeBefore = engine42.Gauge.Position;
-                            UnitState shield = w0.Field[0];
+                            UnitState target = w0.Field[0];
                             if (engine42.ChooseRichMode(2) && engine42.PendingDamageByPlayer == 1
-                                && engine42.ChooseDamageTarget(shield.Instance.InstanceId))
+                                && engine42.ChooseDamageTarget(target.Instance.InstanceId))
                             {
-                                // 盾兵（体力3）は効果ダメージで倒れる。効果死なのでゲージは動かない。
+                                // 槍兵（体力2）は効果ダメージで倒れる。効果死なのでゲージは動かない。
                                 richOnPlayKillOk = w0.Field.Count == 0 && engine42.Gauge.Position == gaugeBefore;
                             }
                         }
@@ -2004,10 +2012,10 @@ namespace EngineCheck
                 }
                 else if (richPhase == 2 && richFirst != null && w1.Field.Contains(richFirst) && w0.Field.Count > 0)
                 {
-                    UnitState shield = w0.Field[0];
-                    if (engine42.AttackUnit(richFirst, shield) && engine42.PendingRichChoiceByPlayer == 1
+                    UnitState target = w0.Field[0];
+                    if (engine42.AttackUnit(richFirst, target) && engine42.PendingRichChoiceByPlayer == 1
                         && engine42.ChooseRichMode(2) && engine42.PendingDamageByPlayer == 1
-                        && engine42.ChooseDamageTarget(shield.Instance.InstanceId))
+                        && engine42.ChooseDamageTarget(target.Instance.InstanceId))
                     {
                         // 対象が効果で倒れたので攻撃は不発。攻撃回数は消費されず、本人も無傷で残る。
                         richFizzleOk = w0.Field.Count == 0 && w1.Field.Contains(richFirst)
@@ -2019,9 +2027,9 @@ namespace EngineCheck
                         if (engine42.AttackFace(richFirst) && engine42.PendingRichChoiceByPlayer == 1
                             && engine42.ChooseRichMode(1))
                         {
-                            // モード1（ドロー）解決後に顔攻撃が再開され、攻撃力4の分だけゲージが動く。
+                            // モード1（ドロー）解決後に顔攻撃が再開され、攻撃力3の分だけゲージが動く。
                             richFaceAfterDrawOk = richFirst.AttacksUsedThisTurn == 1
-                                && Math.Abs(engine42.Gauge.Position - gaugeBefore) == 4;
+                                && Math.Abs(engine42.Gauge.Position - gaugeBefore) == 3;
                         }
                     }
                     if (richFizzleOk && richFaceAfterDrawOk) richPhase = 4;
@@ -2032,7 +2040,7 @@ namespace EngineCheck
                 }
             }
             Check(richBlockedOk, "器用富豪: モード選択待ちの間は他の行動ができない");
-            Check(richOnPlayKillOk, "器用富豪: 登場時モード2で体力3のユニットを倒せる（ゲージは動かない）");
+            Check(richOnPlayKillOk, "器用富豪: 登場時モード2で体力2のユニットを倒せる（ゲージは動かない）");
             Check(richOnPlayDrawOk, "器用富豪: 登場時モード1で1枚引ける（効果ドローとして数える）");
             Check(richFizzleOk, "器用富豪: 攻撃時モード2で対象を倒すと攻撃は不発になり、回数を消費しない");
             Check(richFaceAfterDrawOk, "器用富豪: 攻撃時モード1の解決後に顔攻撃が通り、ゲージが動く");

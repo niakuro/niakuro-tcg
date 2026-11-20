@@ -20,9 +20,10 @@ public static class PlaytestNoteEndpoint
         PlaytestNoteRequest request,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
-        ILogger<PlaytestNoteEndpoint> logger,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
+        var logger = loggerFactory.CreateLogger(nameof(PlaytestNoteEndpoint));
         var webhookUrl = configuration["Discord:WebhookUrl"];
         if (string.IsNullOrWhiteSpace(webhookUrl))
             return Results.Problem(
