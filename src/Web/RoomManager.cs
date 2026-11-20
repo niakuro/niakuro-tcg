@@ -64,7 +64,7 @@ public sealed class RoomManager
                 "playTactic" => Guid.TryParse(value, out var id) && room.Engine.PlayTactic(id),
                 "attackFace" => Guid.TryParse(value, out var id) && room.Engine.AttackFace(FindUnit(room.Engine, index, id)),
                 "attackUnit" => ParseAttack(value, room.Engine, index, out var a, out var d) && room.Engine.AttackUnit(a!, d!),
-                "endTurn" => room.Engine.EndTurn(),
+                "endTurn" => room.Engine.EndTurn() || room.Engine.WaitingDiscard,
                 "haisui" => Enum.TryParse<HaisuiAction>(value, out var choice) && room.Engine.ChooseHaisui(choice),
                 "discard" => Guid.TryParse(value, out var discardId) && room.Engine.DiscardFromHand(discardId),
                 "chooseDiscard" => Guid.TryParse(value, out var chosenDiscardId) && room.Engine.ChooseCardToDiscard(chosenDiscardId),
@@ -82,7 +82,7 @@ public sealed class RoomManager
                 "masterCopy" => ParseMasterCopy(value, room.Engine),
                 _ => false
             };
-            if (success && action == "endTurn") room.Engine.StartTurn();
+            if (success && action == "endTurn" && !room.Engine.WaitingDiscard) room.Engine.StartTurn();
             return success ? OperationResult.Ok(code) : OperationResult.Fail("その行動は今実行できません。");
         }
     }
