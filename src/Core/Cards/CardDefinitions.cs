@@ -66,9 +66,19 @@ namespace Niakuro.Tcg.Core
         // 常時効果: このユニットが場にいる限り、お互いの手札は全て表向きになる（超絶自己中にあくろ用）。
         public bool RevealsAllHands { get; }
 
-        // 登場時効果: 自分の手札1枚と相手の手札1枚を選んで捨てる（超絶自己中にあくろ用）。
+        // 登場時効果: 自分の手札1枚と、指定枚数の相手の手札を選んで捨てる。
         // 選択が必要なので、エンジンが選択待ちとして処理する。
         public bool SelfishDiscardOnPlay { get; }
+        public int SelfishOpponentDiscardCountOnPlay { get; }
+
+        // 登場時、指定特徴を持つ他の味方がいる場合、相手の手札を見て1枚捨てさせる。
+        public string DiscardChosenIfAllyTrait { get; }
+
+        // 登場時、お互いのデッキを1枚ずつ破棄し、墓地から条件に合う味方を復活させる。
+        public int MillBothReviveMaxCost { get; }
+
+        // 破壊時にゲーム外から場に出すユニット（マスカット用）。
+        public UnitCardDefinition SummonOnDeath { get; }
 
         // 起動型能力のID（1ターンに1度、選んで使う能力）。実体はエンジン側が持つ。
         public string ActivatedAbilityId { get; }
@@ -76,7 +86,7 @@ namespace Niakuro.Tcg.Core
         // 全ての特徴を持つ（超絶自己中にあくろ用）。特徴の判定は UnitState.HasTrait を使う。
         public bool AllTraits { get; }
 
-        // 登場時／破壊された時に、自分のユニット1体の体力を回復する量（0なら回復しない。猫被りにあくろ用）。
+        // 登場時／破壊された時に、自分のユニット1体の体力を回復する量（0なら回復しない）。
         public int HealOnPlay { get; }
         public int HealOnDeath { get; }
 
@@ -176,7 +186,7 @@ namespace Niakuro.Tcg.Core
 
         // 常時効果（秩序なき連携ニトグリ専用の複合オーラ）:
         //   自分の場に自分以外の悪友がいれば、その悪友全員とこのユニットは攻撃力+1・体力の最大値-1。
-        //   自分の場に善友がいれば、その善友全員とこのユニットは体力の最大値+1。
+        //   自分の場に自分以外の善友がいれば、その善友全員とこのユニットは体力の最大値+2。
         //   実体は GameEngine.RefreshAuras が計算する。
         public bool OrderlessAura { get; }
 
@@ -227,7 +237,11 @@ namespace Niakuro.Tcg.Core
             int richChoiceDamage = 0,
             int masterChoiceDamage = 0,
             int masterChoiceExtraPickMinBasePoints = 0,
-            int onPlayMinBasePoints = 0)
+            int onPlayMinBasePoints = 0,
+            int selfishOpponentDiscardCountOnPlay = 1,
+            string discardChosenIfAllyTrait = null,
+            int millBothReviveMaxCost = 0,
+            UnitCardDefinition summonOnDeath = null)
             : base(id, name, cost)
         {
             Attack = attack;
@@ -240,6 +254,10 @@ namespace Niakuro.Tcg.Core
             AttackDebuffAura = attackDebuffAura;
             RevealsAllHands = revealsAllHands;
             SelfishDiscardOnPlay = selfishDiscardOnPlay;
+            SelfishOpponentDiscardCountOnPlay = selfishOpponentDiscardCountOnPlay;
+            DiscardChosenIfAllyTrait = discardChosenIfAllyTrait;
+            MillBothReviveMaxCost = millBothReviveMaxCost;
+            SummonOnDeath = summonOnDeath;
             ActivatedAbilityId = activatedAbilityId;
             AllTraits = allTraits;
             HealOnPlay = healOnPlay;
@@ -293,7 +311,8 @@ namespace Niakuro.Tcg.Core
                 PiercesHaisuiProtection, AbilityText, OnPlayEffectId, OnPlayEffectValue, traits, AttackDebuffAura,
                 RevealsAllHands, SelfishDiscardOnPlay, ActivatedAbilityId, AllTraits, HealOnPlay, HealOnDeath,
                 LinkageTrait, LinkageAttackBonus, DamageOnPlay, BuffAttackOnPlay, BuffTargetsOnPlay,
-                GrantsLinkageTrait, GrantsLinkageBonus, OrderlessAura, ConditionalHaste, ReturnsToHandAfterAttack, DrawOnDeath, DrawAtTurnStart, ScalesWithEffectDraws, FreeDeployOnPlay, Guard, GrantsGuardOnPlay, GuardHealthAura, GuardStatAura, DeployGuardOnDeathMaxCost, CanAttackUnitsWhenPlayed, BattleDamageImmuneOnPlayTurn, BattleDamageTakenCap, CanOnlyAttackUnits, AttacksTwiceOnPlayTurn, SelfHealOnBattleKill, SelfBuffOnPlayAttack, SelfBuffOnPlayHealth, SelfBuffMinBasePoints, PointsGainOnPlay, RichChoiceDamage, MasterChoiceDamage, MasterChoiceExtraPickMinBasePoints, OnPlayMinBasePoints);
+                GrantsLinkageTrait, GrantsLinkageBonus, OrderlessAura, ConditionalHaste, ReturnsToHandAfterAttack, DrawOnDeath, DrawAtTurnStart, ScalesWithEffectDraws, FreeDeployOnPlay, Guard, GrantsGuardOnPlay, GuardHealthAura, GuardStatAura, DeployGuardOnDeathMaxCost, CanAttackUnitsWhenPlayed, BattleDamageImmuneOnPlayTurn, BattleDamageTakenCap, CanOnlyAttackUnits, AttacksTwiceOnPlayTurn, SelfHealOnBattleKill, SelfBuffOnPlayAttack, SelfBuffOnPlayHealth, SelfBuffMinBasePoints, PointsGainOnPlay, RichChoiceDamage, MasterChoiceDamage, MasterChoiceExtraPickMinBasePoints, OnPlayMinBasePoints,
+                SelfishOpponentDiscardCountOnPlay, DiscardChosenIfAllyTrait, MillBothReviveMaxCost, SummonOnDeath);
         }
     }
 

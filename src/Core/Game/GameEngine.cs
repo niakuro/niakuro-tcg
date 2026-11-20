@@ -25,11 +25,14 @@ namespace Niakuro.Tcg.Core
         // PendingDiscardByPlayer が選ぶ側、PendingDiscardTargetPlayer が捨てられる側。
         public int? PendingDiscardByPlayer { get; private set; }
         public int? PendingDiscardTargetPlayer { get; private set; }
+        public bool PendingDiscardSeesHand { get; private set; }
 
-        // 超絶自己中にあくろの「自分の手札1枚＋相手の手札1枚を選んで捨てる」選択待ち。
+        // 超絶自己中にあくろの「自分の手札1枚＋指定枚数の相手の手札を選んで捨てる」選択待ち。
         public int? PendingSelfishByPlayer { get; private set; }
+        public bool PendingSelfishNeedsOwnCard => _selfishNeedOwn;
+        public int PendingSelfishOpponentCardsRemaining => _selfishOpponentCardsRemaining;
         private bool _selfishNeedOwn;
-        private bool _selfishNeedOpponent;
+        private int _selfishOpponentCardsRemaining;
 
         // ターン終了時に手札上限を超えていて、捨てるのを待っている状態。
         public bool WaitingDiscard { get; private set; }
@@ -104,6 +107,40 @@ namespace Niakuro.Tcg.Core
             }
         }
 
+        // 猫被りにあくろ: 両プレイヤーのデッキ上を1枚ずつ墓地に置き、墓地から味方を復活させる。
+        public void MillBothAndReviveForEffect(int playerIndex, int maxCost)
+        {
+            if (IsGameOver) return;
+
+            foreach (var player in Players)
+            {
+                if (player.Deck.Count == 0) continue;
+                var top = player.Deck[player.Deck.Count - 1];
+                player.Deck.RemoveAt(player.Deck.Count - 1);
+                player.SendToGraveyard(top);
+            }
+
+            var owner = Players[playerIndex];
+            if (owner.Field.Count >= GameConstants.FieldLimit) return;
+
+            var candidates = new System.Collections.Generic.List<CardInstance>();
+            foreach (var card in owner.Graveyard)
+            {
+                if (card.Definition is UnitCardDefinition && card.Definition.Cost <= maxCost)
+                    candidates.Add(card);
+            }
+            if (candidates.Count == 0) return;
+
+            var revived = candidates[_random.Next(candidates.Count)];
+            owner.Graveyard.Remove(revived);
+            var definition = (UnitCardDefinition)revived.Definition;
+            var unit = new UnitState(revived, playerIndex, GlobalTurn);
+            owner.Field.Add(unit);
+            if (definition.ConditionalHaste && owner.Field.Count > 1) unit.HasHaste = true;
+            ResolveOnPlayEffects(playerIndex, definition, unit);
+            RefreshAuras();
+        }
+
         // 手札が上限を超えていたら false を返して捨て待ちになる。
         // DiscardFromHand で上限以下にしてから、もう一度呼ぶ。
         public bool EndTurn()
@@ -174,12 +211,13 @@ namespace Niakuro.Tcg.Core
         {
             if (unitDef.OnPlayEffectId == CharacterEffectIds.DiscardChosenFaceDown)
             {
-                int opponent = 1 - playerIndex;
-                if (Players[opponent].Hand.Count > 0)
-                {
-                    PendingDiscardByPlayer = playerIndex;
-                    PendingDiscardTargetPlayer = opponent;
-                }
+                BeginChosenDiscard(playerIndex, seesHand: false);
+            }
+            else if (unitDef.DiscardChosenIfAllyTrait != null)
+            {
+                var source = sourceOverride ?? FindEnteredUnit(playerIndex, unitDef);
+                if (source != null && HasOtherWithTrait(Players[playerIndex].Field, source, unitDef.DiscardChosenIfAllyTrait))
+                    BeginChosenDiscard(playerIndex, seesHand: true);
             }
             else if (unitDef.OnPlayEffectId != null && EffectRegistry.IsRegistered(unitDef.OnPlayEffectId)
                 && Players[playerIndex].Points.BasePoints >= unitDef.OnPlayMinBasePoints)
@@ -189,9 +227,13 @@ namespace Niakuro.Tcg.Core
             }
 
             // 超絶自己中にあくろの登場時: 自分1枚＋相手1枚の選択捨て。
-            if (unitDef.SelfishDiscardOnPlay) BeginSelfishDiscard(playerIndex);
+            if (unitDef.SelfishDiscardOnPlay)
+                BeginSelfishDiscard(playerIndex, unitDef.SelfishOpponentDiscardCountOnPlay);
 
-            // 猫被りにあくろの登場時回復（ダメージを受けた味方がいる時だけ選択待ちになる）。
+            if (unitDef.MillBothReviveMaxCost > 0)
+                MillBothAndReviveForEffect(playerIndex, unitDef.MillBothReviveMaxCost);
+
+            // 汎用の登場時回復（ダメージを受けた味方がいる時だけ選択待ちになる）。
             if (unitDef.HealOnPlay > 0) BeginHealChoice(playerIndex, unitDef.HealOnPlay);
 
             // ミニトグリの登場時ダメージ（相手の場にユニットがいる時だけ選択待ちになる）。
@@ -376,11 +418,20 @@ namespace Niakuro.Tcg.Core
         }
 
         // 「自分1枚＋相手1枚」選択待ちを開始する。手札が空の側はスキップする。
-        private void BeginSelfishDiscard(int byPlayer)
+        private void BeginChosenDiscard(int byPlayer, bool seesHand)
+        {
+            int opponent = 1 - byPlayer;
+            if (Players[opponent].Hand.Count == 0) return;
+            PendingDiscardByPlayer = byPlayer;
+            PendingDiscardTargetPlayer = opponent;
+            PendingDiscardSeesHand = seesHand;
+        }
+
+        private void BeginSelfishDiscard(int byPlayer, int opponentCardCount = 1)
         {
             _selfishNeedOwn = Players[byPlayer].Hand.Count > 0;
-            _selfishNeedOpponent = Players[1 - byPlayer].Hand.Count > 0;
-            if (_selfishNeedOwn || _selfishNeedOpponent) PendingSelfishByPlayer = byPlayer;
+            _selfishOpponentCardsRemaining = Math.Min(opponentCardCount, Players[1 - byPlayer].Hand.Count);
+            if (_selfishNeedOwn || _selfishOpponentCardsRemaining > 0) PendingSelfishByPlayer = byPlayer;
         }
 
         // 選択待ちの解決: 自分の手札からでも相手の手札からでも、まだ必要な側の1枚を選んで捨てる。
@@ -397,19 +448,19 @@ namespace Niakuro.Tcg.Core
                     Players[by].RemoveFromHand(own);
                     Players[by].SendToGraveyard(own);
                     _selfishNeedOwn = false;
-                    if (!_selfishNeedOpponent) PendingSelfishByPlayer = null;
+                    if (_selfishOpponentCardsRemaining == 0) PendingSelfishByPlayer = null;
                     return true;
                 }
             }
-            if (_selfishNeedOpponent)
+            if (_selfishOpponentCardsRemaining > 0)
             {
                 var opp = Players[1 - by].FindInHand(instanceId);
                 if (opp != null)
                 {
                     Players[1 - by].RemoveFromHand(opp);
                     Players[1 - by].SendToGraveyard(opp);
-                    _selfishNeedOpponent = false;
-                    if (!_selfishNeedOwn) PendingSelfishByPlayer = null;
+                    _selfishOpponentCardsRemaining--;
+                    if (!_selfishNeedOwn && _selfishOpponentCardsRemaining == 0) PendingSelfishByPlayer = null;
                     return true;
                 }
             }
@@ -429,6 +480,7 @@ namespace Niakuro.Tcg.Core
             target.SendToGraveyard(card);
             PendingDiscardByPlayer = null;
             PendingDiscardTargetPlayer = null;
+            PendingDiscardSeesHand = false;
             return true;
         }
 
@@ -642,6 +694,7 @@ namespace Niakuro.Tcg.Core
                 {
                     u.AuraAttackBonus = 0;
                     u.AuraHealthModifier = 0;
+                    u.AuraHaste = false;
                     // 効果ドロー連動（無数の選択肢ミルキー）: X = 効果で引いた枚数 ÷2（切り捨て）。
                     u.DrawScaleBonus = AnyDef(u, d => d.ScalesWithEffectDraws)
                         ? Players[u.OwnerIndex].EffectDrawsThisGame / 2
@@ -674,11 +727,15 @@ namespace Niakuro.Tcg.Core
                     {
                         if (ReferenceEquals(u, source) || !u.HasTrait(CardTraits.Zennyuu)) continue;
                         anyZennyuu = true;
-                        u.AuraHealthModifier += 1;
+                        u.AuraHealthModifier += 2;
                     }
                     if (anyZennyuu)
                     {
-                        source.AuraHealthModifier += 1;
+                        source.AuraHealthModifier += 2;
+                    }
+                    if (anyAkuyuu && anyZennyuu)
+                    {
+                        foreach (var u in p.Field) u.AuraHaste = true;
                     }
                 }
             }
@@ -1128,7 +1185,7 @@ namespace Niakuro.Tcg.Core
             if (!CanAct(ActivePlayerIndex)) return false;
             if (attacker == null || attacker.OwnerIndex != ActivePlayerIndex) return false;
             if (attacker.AttacksUsedThisTurn >= MaxAttacksThisTurn(attacker)) return false;
-            if (attacker.SummonedTurn >= GlobalTurn && !attacker.HasHaste)
+            if (attacker.SummonedTurn >= GlobalTurn && !attacker.HasHaste && !attacker.AuraHaste)
             {
                 // 出たターンは攻撃できない。ただし速攻は全て可、先手必勝はユニットへの攻撃だけ可。
                 if (faceAttack || !AnyDef(attacker, d => d.CanAttackUnitsWhenPlayed)) return false;
@@ -1168,11 +1225,21 @@ namespace Niakuro.Tcg.Core
             if (!owner.Field.Remove(unit)) return;
             owner.SendToGraveyard(unit.Instance);
 
-            // 破壊された時の回復（猫被りにあくろ）。場を離れた後に、残った味方から対象を選ぶ。
+            // 破壊された時の回復。場を離れた後に、残った味方から対象を選ぶ。
             if (unit.Definition.HealOnDeath > 0) BeginHealChoice(unit.OwnerIndex, unit.Definition.HealOnDeath);
 
             // 破壊された時のドロー（ミルキー）。
             if (unit.Definition.DrawOnDeath > 0) DrawCardsForEffect(unit.OwnerIndex, unit.Definition.DrawOnDeath);
+
+            // 破壊された時、ゲーム外から指定ユニットを場に出す（マスカット）。
+            var summonOnDeath = unit.Definition.SummonOnDeath;
+            if (summonOnDeath != null && owner.Field.Count < GameConstants.FieldLimit)
+            {
+                var summoned = new UnitState(new CardInstance(summonOnDeath), unit.OwnerIndex, GlobalTurn);
+                owner.Field.Add(summoned);
+                if (summonOnDeath.ConditionalHaste && owner.Field.Count > 1) summoned.HasHaste = true;
+                ResolveOnPlayEffects(unit.OwnerIndex, summonOnDeath, summoned);
+            }
 
             // 破壊された時、デッキから守護ユニットを選んで場に出す（シャインマスカット）。
             if (unit.Definition.DeployGuardOnDeathMaxCost > 0)
@@ -1229,7 +1296,7 @@ namespace Niakuro.Tcg.Core
             }
         }
 
-        // ---------- 回復の対象選択（猫被りにあくろ） ----------
+        // ---------- 回復の対象選択 ----------
 
         // 回復対象の選択待ち。ダメージを受けている味方がいない時は、選択待ち自体が発生しない。
         public int? PendingHealByPlayer { get; private set; }

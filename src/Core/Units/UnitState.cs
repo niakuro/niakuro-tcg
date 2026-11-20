@@ -21,6 +21,7 @@ namespace Niakuro.Tcg.Core
             set => AttacksUsedThisTurn = value ? System.Math.Max(AttacksUsedThisTurn, 1) : 0;
         }
         public bool HasHaste { get; set; } // 速攻（出たターンでも攻撃できる）
+        public bool AuraHaste { get; set; } // 他ユニットの常時効果で得た速攻
         public bool DestroyAfterAttack { get; set; } // 攻撃した後に破壊される（酒！酒！酒！）
         public bool AbilityUsedThisTurn { get; set; } // 起動型能力（1ターンに1度）の使用済みフラグ
         public int SummonedTurn { get; } // 出したターンには攻撃できない判定に使う

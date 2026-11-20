@@ -141,7 +141,10 @@ public sealed class RoomManager
             waitingDiscard = engine.WaitingDiscard,
             pendingDiscardBy = engine.PendingDiscardByPlayer,
             pendingDiscardTarget = engine.PendingDiscardTargetPlayer,
+            pendingDiscardSeesHand = engine.PendingDiscardSeesHand,
             pendingSelfishBy = engine.PendingSelfishByPlayer,
+            pendingSelfishNeedsOwn = engine.PendingSelfishNeedsOwnCard,
+            pendingSelfishOpponentRemaining = engine.PendingSelfishOpponentCardsRemaining,
             pendingHealBy = engine.PendingHealByPlayer,
             pendingDamageBy = engine.PendingDamageByPlayer,
             pendingBuffBy = engine.PendingBuffByPlayer,
@@ -162,7 +165,9 @@ public sealed class RoomManager
                 engine.Haisui.IsActionTaken(HaisuiAction.NextTurnPoints)
             },
             me = ViewPlayer(me, engine, room.Players[viewer].DeckId),
-            opponent = ViewOpponent(opp, engine, room.Players[1 - viewer].DeckId)
+            opponent = ViewOpponent(opp, engine, room.Players[1 - viewer].DeckId,
+                engine.PendingDiscardByPlayer == viewer && engine.PendingDiscardSeesHand
+                    && engine.PendingDiscardTargetPlayer == opp.Index)
         };
     }
 
@@ -175,14 +180,17 @@ public sealed class RoomManager
         deckCount = p.Deck.Count,
         points = p.Points.Available,
         basePoints = p.Points.BasePoints,
+        maxPoints = p.Points.TurnMaximum,
+        nextTurnPoints = p.Points.NextTurnAvailable,
+        carryover = p.Points.Carryover,
         mulliganUsed = p.HasUsedMulligan
     };
 
-    private static object ViewOpponent(PlayerState p, GameEngine engine, string deckId) => new
+    private static object ViewOpponent(PlayerState p, GameEngine engine, string deckId, bool seesHand) => new
     {
         deckId,
         handCount = p.Hand.Count,
-        hand = p.Hand.Select(c => engine.IsHandCardRevealed(p.Index, c)
+        hand = p.Hand.Select(c => seesHand || engine.IsHandCardRevealed(p.Index, c)
             ? ViewCard(c)
             : (object)new { c.InstanceId, name = (string?)null, cost = (int?)null, type = (string?)null, hidden = true }).ToArray(),
         revealedCards = p.Hand.Where(c => engine.IsHandCardRevealed(p.Index, c)).Select(c => ViewCard(c)).ToArray(),
@@ -201,7 +209,7 @@ public sealed class RoomManager
         currentHealth = u.CurrentHealth,
         maxHealth = u.MaxHealth,
         hasAttacked = u.HasAttackedThisTurn,
-        hasHaste = u.HasHaste,
+        hasHaste = u.HasHaste || u.AuraHaste,
         guard = u.HasGuard
     };
 

@@ -2,7 +2,7 @@
 //   構築済みデッキ3種のレシピ。どれも「デッキ40枚・同名3枚まで」を満たすよう組んである
 //   （EngineCheck で自動検証している）。
 //   組み方の方針: メンバー2人分ずつのユニットを軸に、戦術で色を足す。
-//   猫被りにあくろ（善友）は、どのデッキにも入る便利な回復役として共通で入れている。
+//   各デッキのユニットは、デッキ名に含まれる2家系だけで構成する。
 using System.Collections.Generic;
 
 namespace Niakuro.Tcg.Core
@@ -48,13 +48,12 @@ namespace Niakuro.Tcg.Core
             Add(deck, CharacterCards.MuscatYoung, 3);   // ミニマスカット
             Add(deck, CharacterCards.KohakuSmall, 3);   // ミニミルキー
             Add(deck, CharacterCards.KohakuCat, 2);     // 猫好きミルキー
-            Add(deck, CharacterCards.Muscat, 2);        // マスカット
+            Add(deck, CharacterCards.Muscat, 3);        // マスカット
             Add(deck, CharacterCards.Kohaku, 3);        // ミルキー
             Add(deck, CharacterCards.MuscatRipe, 3);    // 成熟マスカット
-            Add(deck, CharacterCards.NiakuroCat, 2);    // 猫被りにあくろ
             Add(deck, CharacterCards.MuscatGamer, 3);   // ゲーマーマスカット
             Add(deck, CharacterCards.KohakuShine, 3);   // ゲーマーミルキー
-            Add(deck, CharacterCards.MuscatBig, 2);     // シャインマスカット
+            Add(deck, CharacterCards.MuscatBig, 3);     // シャインマスカット
             Add(deck, CharacterCards.KohakuBig, 2);     // 無数の選択肢ミルキー
             Add(deck, SampleCards.Supply, 3);           // 紳士の嗜み
             Add(deck, SampleCards.ThreeRabbits, 1);     // 三兎追えば二兎得る
@@ -74,12 +73,11 @@ namespace Niakuro.Tcg.Core
             Add(deck, CharacterCards.Yaya, 3);           // やーや
             Add(deck, CharacterCards.Coconut, 3);        // ココナッツ
             Add(deck, CharacterCards.YayaRich, 3);       // 器用富豪やーや
-            Add(deck, CharacterCards.NiakuroCat, 2);     // 猫被りにあくろ
             Add(deck, CharacterCards.CoconutGamer, 3);   // ゲーマーココナッツ
             Add(deck, CharacterCards.YayaGamer, 2);      // ゲーマーやーや
             Add(deck, CharacterCards.CoconutSolo, 2);    // 孤軍奮闘ココナッツ
-            Add(deck, CharacterCards.YayaMaster, 2);     // 手練手管やーや
-            Add(deck, CharacterCards.CoconutMarksman, 1);// 百発百中ココナッツ
+            Add(deck, CharacterCards.YayaMaster, 3);     // 手練手管やーや
+            Add(deck, CharacterCards.CoconutMarksman, 2);// 百発百中ココナッツ
             Add(deck, SampleCards.Supply, 3);            // 紳士の嗜み
             Add(deck, SampleCards.Saizensen, 3);         // 最前線攻略tv⁉︎
             Add(deck, SampleCards.Moshimo, 2);           // もしも～し

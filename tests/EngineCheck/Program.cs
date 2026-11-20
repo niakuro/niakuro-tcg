@@ -26,10 +26,13 @@ namespace EngineCheck
             // --- ポイント: 繰り越し（切り捨て） ---
             var pool = new PointPool();
             Check(pool.BeginTurn() == 2, "ポイント: 1ターン目は2");
+            Check(pool.TurnMaximum == 2, "ポイント表示: ターン上限は2");
             Check(pool.EndTurn() == 1, "ポイント: 残り2の半分=1を繰り越し");
             Check(pool.BeginTurn() == 4, "ポイント: 2ターン目は基本3+繰り越し1=4");
-            Check(pool.TrySpend(3) && pool.Available == 1, "ポイント: 3使うと残り1");
-            Check(pool.EndTurn() == 0, "ポイント: 残り1の半分は切り捨てで0");
+            pool.AddPointsThisTurn(2);
+            Check(pool.TurnMaximum == 6, "ポイント表示: ターン中の追加分も上限に含める");
+            Check(pool.TrySpend(3) && pool.Available == 3, "ポイント: 3使うと残り3");
+            Check(pool.EndTurn() == 1, "ポイント: 残り3の半分は切り捨てで1");
 
             // --- ゲージ: 背水の残り1ストップとフィニッシャー貫通 ---
             var gauge = new FrontlineGauge();
@@ -132,21 +135,51 @@ namespace EngineCheck
                 if (PlayerState.ValidateDeck(d).Count != 0) preconOk = false;
             }
             Check(preconOk, "構築済み: 3デッキ全て適法（40枚・同名3枚まで）");
+            UnitCardDefinition[][] allowedUnits =
+            {
+                new[] { CharacterCards.Niakuro, CharacterCards.NiakuroSmall, CharacterCards.NiakuroGamer,
+                    CharacterCards.NiakuroSuper, CharacterCards.NiakuroCat, CharacterCards.Nitoguri,
+                    CharacterCards.NitoguriMini, CharacterCards.NitoguriGamer, CharacterCards.NitoguriOrderless,
+                    CharacterCards.NitoguriBakusoku },
+                new[] { CharacterCards.Muscat, CharacterCards.MuscatYoung, CharacterCards.MuscatGamer,
+                    CharacterCards.MuscatRipe, CharacterCards.MuscatBig, CharacterCards.Kohaku,
+                    CharacterCards.KohakuSmall, CharacterCards.KohakuCat, CharacterCards.KohakuShine,
+                    CharacterCards.KohakuBig },
+                new[] { CharacterCards.Coconut, CharacterCards.CoconutGamer, CharacterCards.CoconutSmall,
+                    CharacterCards.CoconutSolo, CharacterCards.CoconutMarksman, CharacterCards.Yaya,
+                    CharacterCards.YayaSmall, CharacterCards.YayaGamer, CharacterCards.YayaRich,
+                    CharacterCards.YayaMaster },
+            };
+            bool familiesOk = true;
+            for (int i = 0; i < precons.Length; i++)
+            {
+                foreach (var card in precons[i])
+                {
+                    if (!(card is UnitCardDefinition unit)) continue;
+                    bool allowed = false;
+                    foreach (var familyUnit in allowedUnits[i])
+                        if (ReferenceEquals(unit, familyUnit)) allowed = true;
+                    if (!allowed) familiesOk = false;
+                }
+            }
+            Check(familiesOk, "構築済み: 各デッキのユニットは指定された2家系のみ");
 
             // --- キャラカードの能力値の目安（攻撃+体力 ≦ コスト×2） ---
             var charUnits = new[]
             {
                 CharacterCards.Niakuro, CharacterCards.NiakuroSmall, CharacterCards.NiakuroGamer, CharacterCards.NiakuroSuper,
-                CharacterCards.Nitoguri, CharacterCards.NitoguriMini, CharacterCards.NitoguriGamer, CharacterCards.NitoguriOrderless,
-                CharacterCards.Muscat, CharacterCards.MuscatYoung, CharacterCards.MuscatRipe, CharacterCards.MuscatBig,
-                CharacterCards.Coconut, CharacterCards.CoconutGamer, CharacterCards.CoconutSmall, CharacterCards.CoconutMarksman,
-                CharacterCards.Yaya, CharacterCards.YayaSmall, CharacterCards.YayaGamer, CharacterCards.YayaMaster,
-                CharacterCards.Kohaku, CharacterCards.KohakuSmall, CharacterCards.KohakuShine, CharacterCards.KohakuBig,
+                CharacterCards.NiakuroCat, CharacterCards.Nitoguri, CharacterCards.NitoguriMini, CharacterCards.NitoguriGamer,
+                CharacterCards.NitoguriOrderless, CharacterCards.NitoguriBakusoku, CharacterCards.Muscat, CharacterCards.MuscatYoung,
+                CharacterCards.MuscatGamer, CharacterCards.MuscatRipe, CharacterCards.MuscatBig, CharacterCards.Coconut,
+                CharacterCards.CoconutGamer, CharacterCards.CoconutSmall, CharacterCards.CoconutSolo, CharacterCards.CoconutMarksman,
+                CharacterCards.Yaya, CharacterCards.YayaSmall, CharacterCards.YayaGamer, CharacterCards.YayaRich,
+                CharacterCards.YayaMaster, CharacterCards.Kohaku, CharacterCards.KohakuSmall, CharacterCards.KohakuCat,
+                CharacterCards.KohakuShine, CharacterCards.KohakuBig,
             };
             bool charBudgetOk = true;
             // 守護持ちはキーワードの価値ぶん +1 まで許容する（ミニマスカット 0/3 のような壁型を認める）。
             foreach (var u in charUnits) if (u.Attack + u.Health > u.Cost * 2 + (u.Guard ? 1 : 0)) charBudgetOk = false;
-            Check(charBudgetOk, "キャラカード: 全24体がコスト×2以内");
+            Check(charBudgetOk, "キャラカード: 全30体がコスト×2以内");
 
             // --- 特徴タグ: 全員が古参、にあくろ/ニトグリ/ココナッツは悪友も持つ ---
             bool traitCheckOk = true;
@@ -155,7 +188,8 @@ namespace EngineCheck
             {
                 CharacterCards.Niakuro, CharacterCards.NiakuroSmall, CharacterCards.NiakuroGamer, CharacterCards.NiakuroSuper,
                 CharacterCards.Nitoguri, CharacterCards.NitoguriMini, CharacterCards.NitoguriGamer, CharacterCards.NitoguriOrderless,
-                CharacterCards.Coconut, CharacterCards.CoconutGamer, CharacterCards.CoconutSmall, CharacterCards.CoconutMarksman,
+                CharacterCards.NitoguriBakusoku, CharacterCards.Coconut, CharacterCards.CoconutGamer, CharacterCards.CoconutSmall,
+                CharacterCards.CoconutSolo, CharacterCards.CoconutMarksman,
             };
             foreach (var u in akuyuuUnits) if (!u.HasTrait(CardTraits.Akuyuu)) traitCheckOk = false;
             if (CharacterCards.Muscat.HasTrait(CardTraits.Akuyuu)) traitCheckOk = false;
@@ -163,12 +197,14 @@ namespace EngineCheck
             if (CharacterCards.Kohaku.HasTrait(CardTraits.Akuyuu)) traitCheckOk = false;
             var zennyuuUnits = new[]
             {
-                CharacterCards.Muscat, CharacterCards.MuscatYoung, CharacterCards.MuscatRipe, CharacterCards.MuscatBig,
-                CharacterCards.Yaya, CharacterCards.YayaSmall, CharacterCards.YayaGamer, CharacterCards.YayaMaster,
-                CharacterCards.Kohaku, CharacterCards.KohakuSmall, CharacterCards.KohakuShine, CharacterCards.KohakuBig,
+                CharacterCards.NiakuroCat, CharacterCards.Muscat, CharacterCards.MuscatYoung, CharacterCards.MuscatGamer,
+                CharacterCards.MuscatRipe, CharacterCards.MuscatBig, CharacterCards.Yaya, CharacterCards.YayaSmall,
+                CharacterCards.YayaGamer, CharacterCards.YayaRich, CharacterCards.YayaMaster, CharacterCards.Kohaku,
+                CharacterCards.KohakuSmall, CharacterCards.KohakuCat, CharacterCards.KohakuShine, CharacterCards.KohakuBig,
             };
             foreach (var u in zennyuuUnits) if (!u.HasTrait(CardTraits.Zennyuu)) traitCheckOk = false;
-            foreach (var u in akuyuuUnits) if (u.HasTrait(CardTraits.Zennyuu)) traitCheckOk = false;
+            foreach (var u in akuyuuUnits)
+                if (!u.AllTraits && u.HasTrait(CardTraits.Zennyuu)) traitCheckOk = false;
             Check(traitCheckOk, "特徴: 全員が古参、悪友と善友はそれぞれ3人だけ");
 
             // --- 表向きと「裏向きを選んで捨てる」の流れ ---
@@ -182,7 +218,7 @@ namespace EngineCheck
             engine4.StartTurn(); // P0 ターン2（基本3+繰り越し1=4ポイント）
             CardInstance niakuroCard = null;
             foreach (var c in engine4.Players[0].Hand) { niakuroCard = c; break; }
-            Check(engine4.PlayUnit(niakuroCard.InstanceId), "にあくろ: コスト4で出せる");
+            Check(engine4.PlayUnit(niakuroCard.InstanceId), "にあくろ: コスト2で出せる");
             Check(engine4.PendingDiscardByPlayer == 0 && engine4.PendingDiscardTargetPlayer == 1,
                 "にあくろ: 登場時に「選んで捨てる」待ちになる");
             engine4.RevealRandomForEffect(0, 1);
@@ -214,6 +250,7 @@ namespace EngineCheck
             var deckAllGamer = new List<CardDefinition>();
             for (int i = 0; i < 40; i++) deckAllGamer.Add(CharacterCards.NiakuroGamer);
             var engine6 = new GameEngine(deckAllMuscat, deckAllGamer, seed: 9);
+            engine6.Players[1].Field.Add(MakeUnit(CharacterCards.Niakuro, owner: 1));
             // P0: ターン1・2は温存、ターン3（GT5）にマスカットを出す
             // P1: ターン3（GT6）にゲーマーにあくろを出す
             for (int round = 0; round < 2; round++)
@@ -230,12 +267,20 @@ namespace EngineCheck
             CardInstance gamerCard = null;
             foreach (var c in engine6.Players[1].Hand) { gamerCard = c; break; }
             Check(engine6.PlayUnit(gamerCard.InstanceId), "ゲーマー検証: ゲーマーにあくろを出せる");
+            Check(engine6.PendingDiscardByPlayer == 1 && engine6.PendingDiscardSeesHand
+               && engine6.Players[0].RevealedCount == 0,
+                "ゲーマー: 他の悪友がいれば相手の手札を公開せずに覗き見選択待ち");
+            CardInstance peekedCard = null;
+            foreach (var c in engine6.Players[0].Hand) { peekedCard = c; break; }
+            Check(peekedCard != null && engine6.ChooseCardToDiscard(peekedCard.InstanceId)
+               && engine6.Players[0].RevealedCount == 0,
+                "ゲーマー: 覗いたカードを選んで捨てても公開状態にならない");
             engine6.EndTurn();
             engine6.StartTurn(); // P0 ターン4: マスカットで顔攻撃
             var muscatUnit = engine6.Players[0].Field[0];
-            Check(engine6.AttackFace(muscatUnit) && engine6.Gauge.Position == -2,
-                "ゲーマー: 顔攻撃の攻撃力が3→2に下がる（攻撃時のみ弱体）");
-            Check(muscatUnit.Attack == 3, "ゲーマー: 攻撃が終われば攻撃力は元の3に戻る");
+            Check(engine6.AttackFace(muscatUnit) && engine6.Gauge.Position == -1,
+                "ゲーマー: 顔攻撃の攻撃力が2→1に下がる（攻撃時のみ弱体）");
+            Check(muscatUnit.Attack == 2, "ゲーマー: 攻撃が終われば攻撃力は元の2に戻る");
 
             // --- 超絶自己中にあくろ: 全表向き・登場時の自分1枚+相手1枚・起動型能力 ---
             var deckAllSuper = new List<CardDefinition>();
@@ -256,10 +301,12 @@ namespace EngineCheck
             engine7.StartTurn();                     // P0 T5（10ポイント）
             CardInstance superCard = null;
             foreach (var c in engine7.Players[0].Hand) { superCard = c; break; }
-            Check(engine7.PlayUnit(superCard.InstanceId), "超絶自己中検証: コスト9で出せる");
+            Check(engine7.PlayUnit(superCard.InstanceId), "超絶自己中検証: コスト8で出せる");
             var superUnit = engine7.Players[0].Field[0];
             var muscatUnit2 = engine7.Players[1].Field[0];
-            Check(engine7.PendingSelfishByPlayer == 0, "超絶自己中: 登場時に自分1枚+相手1枚の選択待ちになる");
+            Check(engine7.PendingSelfishByPlayer == 0
+               && engine7.PendingSelfishOpponentCardsRemaining == 2,
+                "超絶自己中: 登場時に自分1枚+相手2枚の選択待ちになる");
             CardInstance anyP1Card = null;
             foreach (var c in engine7.Players[1].Hand) { anyP1Card = c; break; }
             Check(engine7.IsHandCardRevealed(1, anyP1Card), "超絶自己中: 場にいる限り相手の手札は全て表向き");
@@ -267,7 +314,13 @@ namespace EngineCheck
             foreach (var c in engine7.Players[0].Hand) { ownPick = c; break; }
             Check(engine7.ChooseSelfishDiscard(ownPick.InstanceId), "超絶自己中: 自分の手札を1枚捨てる");
             Check(engine7.ChooseSelfishDiscard(anyP1Card.InstanceId)
-               && engine7.PendingSelfishByPlayer == null, "超絶自己中: 相手の手札を1枚捨てて選択待ちが終わる");
+               && engine7.PendingSelfishOpponentCardsRemaining == 1,
+                "超絶自己中: 相手の手札の1枚目を捨てる");
+            CardInstance anyP1Card2 = null;
+            foreach (var c in engine7.Players[1].Hand) { anyP1Card2 = c; break; }
+            Check(engine7.ChooseSelfishDiscard(anyP1Card2.InstanceId)
+               && engine7.PendingSelfishByPlayer == null,
+                "超絶自己中: 相手の手札を2枚捨てて選択待ちが終わる");
             Check(engine7.UseSelfishAbility(superUnit, 3) && engine7.Gauge.Position == -1,
                 "超絶自己中能力3: ゲージを相手側に1進める");
             Check(!engine7.UseSelfishAbility(superUnit, 3), "超絶自己中: 能力は1ターンに1度だけ");
@@ -276,73 +329,47 @@ namespace EngineCheck
             engine7.EndTurn();
             engine7.StartTurn(); engine7.EndTurn(); // P1 T5
             engine7.StartTurn();                     // P0 T6（能力リセット）
-            Check(engine7.UseSelfishAbility(superUnit, 2, muscatUnit2) && muscatUnit2.MaxHealth == 2,
+            Check(engine7.UseSelfishAbility(superUnit, 2, muscatUnit2) && muscatUnit2.MaxHealth == 3,
                 "超絶自己中能力2: 相手ユニットの体力の最大値を1下げる");
 
-            // --- 猫被りにあくろ: 登場時と破壊時に味方を1回復 ---
+            // --- 猫被りにあくろ: 相互ミルの後、コスト3以下のユニットを墓地から蘇生 ---
             var deckAllCat = new List<CardDefinition>();
             for (int i = 0; i < 40; i++) deckAllCat.Add(CharacterCards.NiakuroCat);
             var deckAllSpear = new List<CardDefinition>();
             for (int i = 0; i < 40; i++) deckAllSpear.Add(SampleCards.Spearman);
             var engine8 = new GameEngine(deckAllCat, deckAllSpear, seed: 17);
-            engine8.StartTurn(); engine8.EndTurn(); // P0 T1
-            engine8.StartTurn();                     // P1 T1: 槍兵を出す
-            CardInstance spearCard = null;
-            foreach (var c in engine8.Players[1].Hand) { spearCard = c; break; }
-            engine8.PlayUnit(spearCard.InstanceId);
-            var spear1 = engine8.Players[1].Field[0];
-            engine8.EndTurn();
-            engine8.StartTurn();                     // P0 T2（4ポイント）: 猫Aを出す
-            CardInstance catCardA = null;
-            foreach (var c in engine8.Players[0].Hand) { catCardA = c; break; }
-            engine8.PlayUnit(catCardA.InstanceId);
-            var catA = engine8.Players[0].Field[0];
-            Check(catA.HasTrait(CardTraits.Zennyuu) && !catA.HasTrait(CardTraits.Akuyuu),
-                "猫被り: 特徴は古参・善友（悪友ではない）");
-            engine8.EndTurn();
-            engine8.StartTurn();                     // P1 T2: 槍兵が猫Aを攻撃（Aは2ダメ、槍兵は反撃で倒れる）
-            engine8.AttackUnit(spear1, catA);
-            Check(catA.DamageTaken == 2, "猫被り検証: 猫Aが2ダメージ受けている");
-            engine8.EndTurn();
-            engine8.StartTurn();                     // P0 T3: 猫Bを出す→登場時回復でAを選ぶ
-            CardInstance catCardB = null;
-            foreach (var c in engine8.Players[0].Hand) { catCardB = c; break; }
-            engine8.PlayUnit(catCardB.InstanceId);
-            var catB = engine8.Players[0].Field[1];
-            Check(engine8.PendingHealByPlayer == 0, "猫被り: 登場時に回復の選択待ちになる");
-            Check(engine8.ChooseHealTarget(catA.Instance.InstanceId) && catA.DamageTaken == 0,
-                "猫被り: 登場時に味方の体力を2回復");
-            engine8.EndTurn();
-            engine8.StartTurn();                     // P1 T3: 槍兵2を出す
-            CardInstance spearCard2 = null;
-            foreach (var c in engine8.Players[1].Hand) { spearCard2 = c; break; }
-            engine8.PlayUnit(spearCard2.InstanceId);
-            var spear2 = engine8.Players[1].Field[0];
-            engine8.EndTurn();
-            engine8.StartTurn();                     // P0 T4: 猫Bが槍兵2を攻撃（Bは反撃で2ダメ、槍兵2は倒れる）
-            engine8.AttackUnit(catB, spear2);
-            Check(catB.DamageTaken == 2, "猫被り検証: 猫Bが2ダメージ受けている");
-            engine8.EndTurn();
-            engine8.StartTurn();                     // P1 T4: 槍兵3を出す
-            CardInstance spearCard3 = null;
-            foreach (var c in engine8.Players[1].Hand) { spearCard3 = c; break; }
-            engine8.PlayUnit(spearCard3.InstanceId);
-            var spear3 = engine8.Players[1].Field[0];
-            engine8.EndTurn();
-            engine8.StartTurn();                     // P0 T5: 猫Aが槍兵3を攻撃（Aは2ダメで生き残る、槍兵3は倒れる）
-            engine8.AttackUnit(catA, spear3);
-            engine8.EndTurn();
-            engine8.StartTurn();                     // P1 T5: 槍兵4を出す
-            CardInstance spearCard4 = null;
-            foreach (var c in engine8.Players[1].Hand) { spearCard4 = c; break; }
-            engine8.PlayUnit(spearCard4.InstanceId);
-            var spear4 = engine8.Players[1].Field[0];
-            engine8.EndTurn();
-            engine8.StartTurn();                     // P0 T6: 猫Aが槍兵4を攻撃（Aは反撃で倒れる→破壊時回復でBを選ぶ）
-            engine8.AttackUnit(catA, spear4);
-            Check(engine8.PendingHealByPlayer == 0, "猫被り: 破壊された時に回復の選択待ちになる");
-            Check(engine8.ChooseHealTarget(catB.Instance.InstanceId) && catB.DamageTaken == 0,
-                "猫被り: 破壊された時に味方の体力を2回復");
+            engine8.StartTurn(); engine8.EndTurn();
+            engine8.StartTurn(); engine8.EndTurn();
+            engine8.StartTurn();
+            CardInstance catCard = null;
+            foreach (var c in engine8.Players[0].Hand) { catCard = c; break; }
+            int p0DeckBeforeCat = engine8.Players[0].Deck.Count;
+            int p1DeckBeforeCat = engine8.Players[1].Deck.Count;
+            Check(engine8.PlayUnit(catCard.InstanceId), "猫被り: 登場できる");
+            Check(engine8.Players[0].Field.Count == GameConstants.FieldLimit,
+                "猫被り: 蘇生した猫被りの登場時効果も解決し、場の上限で止まる");
+            Check(engine8.Players[0].Deck.Count == p0DeckBeforeCat - GameConstants.FieldLimit
+               && engine8.Players[1].Deck.Count == p1DeckBeforeCat - GameConstants.FieldLimit,
+                "猫被り: 各効果解決で両者のデッキ上を1枚ずつ墓地へ置く");
+            bool allRevivedCats = true;
+            foreach (var u in engine8.Players[0].Field)
+                if (u.Definition != CharacterCards.NiakuroCat) allRevivedCats = false;
+            Check(allRevivedCats && engine8.Players[0].Graveyard.Count == 1,
+                "猫被り: 墓地からユニットを蘇生し、場が上限なら追加で出さない");
+
+            // --- マスカット: 破壊時にミニマスカットを場に出す ---
+            var engineMuscatDeath = new GameEngine(deckAllMuscat, deckAllSpear, seed: 18);
+            engineMuscatDeath.StartTurn(); engineMuscatDeath.EndTurn();
+            engineMuscatDeath.StartTurn(); engineMuscatDeath.EndTurn();
+            engineMuscatDeath.StartTurn();
+            CardInstance muscatForDeath = null;
+            foreach (var c in engineMuscatDeath.Players[0].Hand) { muscatForDeath = c; break; }
+            engineMuscatDeath.PlayUnit(muscatForDeath.InstanceId);
+            var muscatToDestroy = engineMuscatDeath.Players[0].Field[0];
+            engineMuscatDeath.RemoveUnitByEffect(muscatToDestroy);
+            Check(engineMuscatDeath.Players[0].Field.Count == 1
+               && engineMuscatDeath.Players[0].Field[0].Definition == CharacterCards.MuscatYoung,
+                "マスカット: 破壊されるとゲーム外からミニマスカットを召喚");
 
             // --- 連携：古参（ニトグリ）: 自分以外の古参がいる間だけ攻撃力+2 ---
             var deckAllNito = new List<CardDefinition>();
@@ -429,13 +456,13 @@ namespace EngineCheck
             var deckOrder = new List<CardDefinition>();
             for (int i = 0; i < 14; i++) deckOrder.Add(CharacterCards.NitoguriOrderless);
             for (int i = 0; i < 13; i++) deckOrder.Add(CharacterCards.Nitoguri);
-            for (int i = 0; i < 13; i++) deckOrder.Add(CharacterCards.NiakuroCat);
+            for (int i = 0; i < 13; i++) deckOrder.Add(CharacterCards.Muscat);
             var engine12 = new GameEngine(deckOrder, SampleCards.BuildSampleDeck(), seed: 31);
             UnitState nito12 = null, cat12 = null, order12 = null;
             for (int turn = 0; turn < 8 && (nito12 == null || cat12 == null || order12 == null); turn++)
             {
                 engine12.StartTurn(); // P0 のターン
-                var wanted = new[] { CharacterCards.Nitoguri, CharacterCards.NiakuroCat, CharacterCards.NitoguriOrderless };
+                var wanted = new[] { CharacterCards.Nitoguri, CharacterCards.Muscat, CharacterCards.NitoguriOrderless };
                 var have = new[] { nito12 != null, cat12 != null, order12 != null };
                 for (int w = 0; w < wanted.Length; w++)
                 {
@@ -453,7 +480,7 @@ namespace EngineCheck
                 foreach (var u in engine12.Players[0].Field)
                 {
                     if (ReferenceEquals(u.Definition, CharacterCards.Nitoguri)) nito12 = u;
-                    if (ReferenceEquals(u.Definition, CharacterCards.NiakuroCat)) cat12 = u;
+                    if (ReferenceEquals(u.Definition, CharacterCards.Muscat)) cat12 = u;
                     if (ReferenceEquals(u.Definition, CharacterCards.NitoguriOrderless)) order12 = u;
                 }
                 engine12.EndTurn();
@@ -464,16 +491,18 @@ namespace EngineCheck
             {
                 Check(nito12.Attack == 3 && nito12.MaxHealth == 2,
                     "秩序: 悪友は攻撃力+1・体力の最大値-1");
-                Check(cat12.MaxHealth == 4 && cat12.Attack == 2,
-                    "秩序: 善友は体力の最大値+1（攻撃力はそのまま）");
-                Check(order12.Attack == 9 && order12.MaxHealth == 7,
-                    "秩序: 本人は悪友分と善友分が両方かかる（攻+1、最大体力は-1+1で相殺）");
+                Check(cat12.MaxHealth == 6 && cat12.Attack == 2,
+                    "秩序: 善友は体力の最大値+2（攻撃力はそのまま）");
+                Check(order12.Attack == 7 && order12.MaxHealth == 7,
+                    "秩序: 本人は悪友分と善友分が両方かかる（攻+1、最大体力-1+2）");
                 Check(engine12.LinkageBonus(nito12) == 3,
                     "秩序: 付与された連携1は、もとの連携2と重なって連携3になる");
                 Check(engine12.LinkageBonus(cat12) == 1,
                     "秩序: 連携を持たないユニットにも連携1が付く");
                 Check(engine12.EffectiveAttackWhenAttacking(nito12) == 6,
                     "秩序: ニトグリの実効攻撃力は 3（オーラ込み）+ 連携3 = 6");
+                Check(nito12.AuraHaste && cat12.AuraHaste && order12.AuraHaste,
+                    "秩序: 悪友と善友がそろうと自軍全員が速攻を得る");
             }
 
             // --- 爆速退社ニトグリ: 条件付き速攻 ---

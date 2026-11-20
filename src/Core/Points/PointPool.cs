@@ -10,7 +10,9 @@ namespace Niakuro.Tcg.Core
         public int BasePoints { get; private set; } = GameConstants.StartingBasePoints;
         public int Carryover { get; private set; }   // 前ターンから繰り越された分
         public int Available { get; private set; }   // このターン使える残り
+        public int TurnMaximum { get; private set; } // このターンに使えるようになったポイントの合計
         public int PendingBonus { get; private set; } // 次の自分のターンに加わる一時ボーナス
+        public int NextTurnAvailable => BasePoints + (_isFirstTurn ? 0 : 1) + Carryover + PendingBonus;
 
         private bool _isFirstTurn = true;
 
@@ -21,6 +23,7 @@ namespace Niakuro.Tcg.Core
             _isFirstTurn = false;
 
             Available = BasePoints + Carryover + PendingBonus;
+            TurnMaximum = Available;
             PendingBonus = 0;
             return Available;
         }
@@ -31,7 +34,11 @@ namespace Niakuro.Tcg.Core
 
         // このターンだけ使えるポイントを増やす（みにやーや用）。
         // 余った分は通常の繰り越し計算にそのまま混ざる。
-        public void AddPointsThisTurn(int amount) => Available += amount;
+        public void AddPointsThisTurn(int amount)
+        {
+            Available += amount;
+            TurnMaximum += amount;
+        }
 
         public bool CanSpend(int cost) => cost <= Available;
 

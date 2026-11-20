@@ -231,7 +231,7 @@ namespace LearnBattle
         private static int Score(int p) => p == 0 ? -_g.Gauge.Position : _g.Gauge.Position;
 
         private static bool CanAttackNow(UnitState u)
-            => !u.HasAttackedThisTurn && (u.SummonedTurn < _g.GlobalTurn || u.HasHaste
+            => !u.HasAttackedThisTurn && (u.SummonedTurn < _g.GlobalTurn || u.HasHaste || u.AuraHaste
                 || u.Definition.CanAttackUnitsWhenPlayed
                 || (u.CopiedDefinition != null && u.CopiedDefinition.CanAttackUnitsWhenPlayed));
 
@@ -262,7 +262,8 @@ namespace LearnBattle
                     CardInstance pick = null;
                     foreach (var c in targetHand) // 表向きは高い順に狙う
                     {
-                        if (_g.IsHandCardRevealed(1 - by, c) && (pick == null || c.Definition.Cost > pick.Definition.Cost)) pick = c;
+                        if ((_g.PendingDiscardSeesHand || _g.IsHandCardRevealed(1 - by, c))
+                            && (pick == null || c.Definition.Cost > pick.Definition.Cost)) pick = c;
                     }
                     if (pick == null) foreach (var c in targetHand) { if (pick == null || c.Definition.Cost > pick.Definition.Cost) pick = c; }
                     if (pick != null) { _g.ChooseCardToDiscard(pick.InstanceId); continue; }
