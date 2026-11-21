@@ -543,7 +543,7 @@ var layer=document.createElement("div");layer.className="shatter-layer";layer.in
 function showCardMove(name,label){var layer=document.createElement("div");layer.className="move-layer";layer.innerHTML='<div class="move-burst">'+esc(name)+'<br><small>'+esc(label)+'</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},1000);}
 function detectLocalDestroyed(){
 if(!S)return;
-var current={};S.players.forEach(function(p){p.field.forEach(function(u){current[u.uid]=defOf(u).name;});});
+var current={};S.players.forEach(function(p){p.field.forEach(function(u){current[u.uid]=defOf(u).name;});p.hand.forEach(function(c){current[c.uid]=defOf(c).name;});});
 Object.keys(lastLocalUnits).forEach(function(uid){if(!current[uid])showShatter(lastLocalUnits[uid]);});
 lastLocalUnits=current;
 }
