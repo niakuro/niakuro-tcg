@@ -535,7 +535,26 @@ function buildDeck(recipe){ var d=[]; recipe.forEach(function(r){ for(var i=0;i<
 function mkPlayer(idx, deckRef){ var def=resolveDeckDef(deckRef); return {idx:idx, deckDef:def, deck:buildDeck(def.recipe), hand:[], grave:[], field:[], base:2, carry:0, avail:0, turnMax:0, pendingBonus:0, firstTurn:true, mulliganUsed:false, effectDraws:0};}
 function mkUnit(card, owner, turn){ return {uid:card.uid, card:card, cardId:card.cardId, owner:owner, damage:0, atkBuff:0, hpRed:0, hpBuff:0, auraAtk:0, auraHp:0, auraHaste:false, scale:0, attacksUsed:0, abilityUsed:false, summoned:turn, haste:false, destroyAfter:false, grantedGuard:false, copiedDef:null};}
 
-var S=null, CPU_ACT=false;
+var S=null, CPU_ACT=false, lastLocalHands=null, lastLocalGraves=null, recentLocalAttacks={};
+var lastLocalUnits={};
+function showShatter(name){
+var layer=document.createElement("div");layer.className="shatter-layer";layer.innerHTML='<div class="shatter-burst">'+esc(name)+'<br><small>破壊</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},800);
+}
+function showCardMove(name,label){var layer=document.createElement("div");layer.className="move-layer";layer.innerHTML='<div class="move-burst">'+esc(name)+'<br><small>'+esc(label)+'</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},700);}
+function detectLocalDestroyed(){
+if(!S)return;
+var current={};S.players.forEach(function(p){p.field.forEach(function(u){current[u.uid]=defOf(u).name;});});
+Object.keys(lastLocalUnits).forEach(function(uid){if(!current[uid])showShatter(lastLocalUnits[uid]);});
+lastLocalUnits=current;
+}
+function detectLocalTransitions(){
+if(!S)return;
+var hands={},graves={},fields={};S.players.forEach(function(p){p.hand.forEach(function(c){hands[c.uid]=defOf(c).name;});p.grave.forEach(function(c){graves[c.uid]=defOf(c).name;});p.field.forEach(function(u){fields[u.uid]=u;});});
+if(lastLocalHands){Object.keys(lastLocalHands).forEach(function(uid){if(!hands[uid]&&graves[uid])showCardMove(lastLocalHands[uid],"墓地へ");});}
+if(lastLocalHands===null){lastLocalHands=hands;lastLocalGraves=graves;}else{lastLocalHands=hands;lastLocalGraves=graves;}
+Object.keys(fields).forEach(function(uid){var unit=fields[uid];if(lastLocalAttacks[uid]===false&&unit.HasAttackedThisTurn){recentLocalAttacks[uid]=true;setTimeout(function(){delete recentLocalAttacks[uid];},550);}});
+Object.keys(fields).forEach(function(uid){lastLocalAttacks[uid]=fields[uid].HasAttackedThisTurn;});
+}
 function newState(mode, d0, d1){
 var p0=mkPlayer(0,d0), p1=mkPlayer(1,d1), i;
 for(i=0;i<START_HAND;i++) p0.hand.push(p0.deck.pop());
@@ -1726,6 +1745,7 @@ var attackTarget=false;
 if(!p && canAct() && isHumanTurn() && S.selected && u.owner===1-S.active){ var au=findUnit(S.active,S.selected); attackTarget=!!(au && canAttackUnit(au,u));}
 var clickable=targetable||selectable||attackTarget;
 var cls="ucard";
+if(recentLocalAttacks[u.uid]) cls+=" attack-lunge";
 if(targetable) cls+=" targetable";
 if(S.selected===u.uid) cls+=" selected";
 if(selectable && (canAttackFace(u) || S.players[1-S.active].field.some(function(v){ return canAttackUnit(u,v);}))) cls+=" playable";
@@ -1742,7 +1762,7 @@ if(u.attacksUsed>=maxAttacks(u)) badges+='<span class="bdg">攻撃済</span>';
 else if(u.summoned>=S.globalTurn && u.owner===S.active) badges+='<span class="bdg">出たターン</span>';
 if(defsOf(u).some(function(dd){ return dd.fx&&dd.fx.activated==="selfish";}) && u.abilityUsed) badges+='<span class="bdg">起動済</span>';
 var hp=unitHp(u), mhp=unitMaxHp(u);
-var stats='<span>攻 '+unitAtk(u)+'</span><span class="'+(u.damage>0?"hp-dmg":"")+'">体 '+hp+"/"+mhp+"</span>";
+var stats='<span class="'+(unitAtk(u)>defOf(u).atk?"stat-boosted":"")+'">攻 '+unitAtk(u)+'</span><span class="'+(u.damage>0?"hp-dmg ":"")+(mhp>defOf(u).hp?"stat-boosted":"")+'">体 '+hp+"/"+mhp+"</span>";
 var debuff=(u.owner===S.active && debuffAgainst(u.owner)>0)? '<div class="tp">攻撃時 -'+debuffAgainst(u.owner)+"（相手のゲーマーにあくろ）</div>": "";
 var inner='<span class="card-title"><span class="cost">'+d.cost+'</span><span class="nm">'+esc(d.name)+'</span></span><span class="tp">'+(d.traits||[]).join("・")+(d.allTraits?"・全特徴":"")+'</span><span class="stats">'+stats+"</span>"+debuff+(badges?'<span class="badges">'+badges+"</span>":"")+'<span class="more">タップで詳細</span>';
 return '<button type="button" class="'+cls+'" data-act="detail" data-kind="unit" data-p="'+u.owner+'" data-u="'+u.uid+'"'+(clickable?"":"") +">"+inner+"</button>";
@@ -1758,11 +1778,17 @@ return '<span class="point-info"><span class="point-count"><strong>残り '+rema
 +'<span class="point-meter" role="meter" aria-label="残りポイント" aria-valuemin="0" aria-valuemax="'+max+'" aria-valuenow="'+remaining+'"><span class="point-meter-fill" style="width:'+fill+'%"></span></span>'
 +'<small class="point-detail">基本 '+pl.base+' ＋ 繰越 '+pl.carry+'</small></span>';
 }
+function openGraveyard(pIdx){
+var pl=S.players[pIdx], cards=pl.grave||[];
+var body=cards.length?cards.map(function(c){var d=CARDS[c.cardId];return '<button type="button" class="ucard hcard" data-act="grave-detail" data-p="'+pIdx+'" data-u="'+c.uid+'"><span class="cost">'+d.cost+'</span><span class="nm">'+esc(d.name)+'</span><span class="tp">'+(d.type==="unit"?"ユニット":"戦術")+(d.type==="unit"?" "+d.atk+"/"+d.hp:"")+'</span><span class="more">タップで詳細</span></button>';}).join(""):'<p class="msg">墓地にカードはありません。</p>';
+document.getElementById("detailRoot").innerHTML='<div class="detail-wrap" data-act="backdrop"><div class="detail-sheet"><div class="d-head"><span class="d-name">'+esc(pname(pIdx))+'の墓地</span></div><p class="d-type">'+cards.length+'枚</p><div class="handview">'+body+'</div><div class="detail-actions"><button class="btn" data-act="detail-close">閉じる</button></div></div></div>';
+}
+function openGraveCardDetail(pIdx,uid){var card=(S.players[pIdx].grave||[]).find(function(c){return c.uid===uid;});if(!card)return;var d=CARDS[card.cardId];var typeLine=d.type==="unit"?"ユニット ／ 特徴："+(d.traits||[]).join("・")+(d.allTraits?"（＋全特徴）":""):"戦術";var stats=d.type==="unit"?'<div class="d-stats"><span>攻撃力 '+d.atk+'</span><span>体力 '+d.hp+'</span></div>':"";document.getElementById("detailRoot").innerHTML='<div class="detail-wrap" data-act="backdrop"><div class="detail-sheet"><div class="d-head"><span class="d-cost">'+d.cost+'</span><span class="d-name">'+esc(d.name)+'</span></div><div class="d-type">'+esc(typeLine)+'</div>'+stats+'<p class="d-fx">'+esc(d.text||"効果なし")+'</p><div class="detail-actions"><button class="btn" data-act="detail-close">閉じる</button></div></div></div>';}
 function zoneHTML(pIdx, isBottom){
 var pl=S.players[pIdx], isTurn=(S.phase==="play" && S.active===pIdx &&!S.over);
 var tag = S.mode==="cpu"? (pIdx===0?'<span class="tag tag-you">あなた</span>':'<span class="tag tag-cpu">CPU</span>'): (S.mode==="auto"?'<span class="tag tag-cpu">CPU</span>':"");
 var pts=pointInfoHTML(pl,isTurn);
-var h='<section class="player-zone'+(isTurn?" turn":"")+'"><div class="pz-head"><span class="pz-name">'+esc(pname(pIdx))+tag+'<span class="deckname">'+esc(deckName(pIdx))+"「"+esc(pl.deckDef.sub||"")+'」</span></span><span class="pz-stats"><span>デッキ <b>'+pl.deck.length+'</b></span><span>墓地 <b>'+pl.grave.length+'</b></span><span>手札 <b>'+pl.hand.length+'</b></span><span>'+pts+"</span></span></div>";
+var h='<section class="player-zone'+(isTurn?" turn":"")+'"><div class="pz-head"><span class="pz-name">'+esc(pname(pIdx))+tag+'<span class="deckname">'+esc(deckName(pIdx))+"「"+esc(pl.deckDef.sub||"")+'」</span></span><span class="pz-stats"><span>デッキ <b>'+pl.deck.length+'</b></span><button class="btn small ghost" data-act="graveyard" data-p="'+pIdx+'">墓地 '+pl.grave.length+'</button><span>手札 <b>'+pl.hand.length+'</b></span><span>'+pts+"</span></span></div>";
 h+='<div class="field">';
 pl.field.forEach(function(u){ h+=unitCardHTML(u);});
 for(var i=pl.field.length;i<FIELD_LIMIT;i++) h+='<div class="slot">ユニット枠</div>';
@@ -1928,6 +1954,8 @@ return "";
 }
 function render(){
 if(IS_NODE ||!S) return;
+detectLocalDestroyed();
+detectLocalTransitions();
 document.getElementById("modeCpu").className="btn small"+(S.mode==="cpu"?" seg-on":"");
 var mode2p=document.getElementById("mode2p"); if(mode2p) mode2p.className="btn small"+(S.mode==="2p"?" seg-on":"");
 document.getElementById("modeAuto").className="btn small"+(S.mode==="auto"?" seg-on":"");
@@ -2298,6 +2326,8 @@ return deckDefByKey(key)||DECKS[0];
 }
 function newGame(mode){
 if(_cpuTimer){ clearTimeout(_cpuTimer); _cpuTimer=null;}
+lastLocalUnits={};
+lastLocalHands=null; lastLocalGraves=null; lastLocalAttacks={};
 var d0=IS_NODE?DECKS[0]:selectedDeckDef(0), d1=IS_NODE?DECKS[1]:selectedDeckDef(1);
 S=newState(mode||"cpu", d0, d1);
 DETAIL=null;
@@ -2329,6 +2359,8 @@ if(t.disabled) return;
 var act=t.getAttribute("data-act");
 if(act==="backdrop"){ if(e.target===t) closeDetail();}
 else if(act==="detail") openCardDetail(t.getAttribute("data-kind"), parseInt(t.getAttribute("data-p"),10), parseInt(t.getAttribute("data-u"),10));
+else if(act==="graveyard") openGraveyard(parseInt(t.getAttribute("data-p"),10));
+else if(act==="grave-detail") openGraveCardDetail(parseInt(t.getAttribute("data-p"),10), parseInt(t.getAttribute("data-u"),10));
 else if(act==="detail-act") detailAct();
 else if(act==="detail-close") closeDetail();
 else if(act==="attack-face") attackFaceBtn();

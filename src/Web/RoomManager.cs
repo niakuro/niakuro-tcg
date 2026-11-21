@@ -175,6 +175,7 @@ public sealed class RoomManager
     {
         deckId,
         hand = p.Hand.Select(c => ViewCard(c)).ToArray(),
+        graveyard = p.Graveyard.Select(c => ViewCard(c)).ToArray(),
         field = p.Field.Select(u => ViewUnit(u, engine)).ToArray(),
         graveyardCount = p.Graveyard.Count,
         deckCount = p.Deck.Count,
@@ -193,6 +194,7 @@ public sealed class RoomManager
         hand = p.Hand.Select(c => seesHand || engine.IsHandCardRevealed(p.Index, c)
             ? ViewCard(c)
             : (object)new { c.InstanceId, name = (string?)null, cost = (int?)null, type = (string?)null, hidden = true }).ToArray(),
+        graveyard = p.Graveyard.Select(c => ViewCard(c)).ToArray(),
         revealedCards = p.Hand.Where(c => engine.IsHandCardRevealed(p.Index, c)).Select(c => ViewCard(c)).ToArray(),
         field = p.Field.Select(u => ViewUnit(u, engine)).ToArray(),
         graveyardCount = p.Graveyard.Count,
@@ -224,6 +226,8 @@ public sealed class RoomManager
         cost = u.Definition.Cost,
         abilityText = u.Definition.AbilityText,
         traits = u.Definition.Traits,
+        baseAttack = u.Definition.Attack,
+        baseHealth = u.Definition.Health,
         attack = engine.EffectiveAttackWhenAttacking(u),
         currentHealth = u.CurrentHealth,
         maxHealth = u.MaxHealth,

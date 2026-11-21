@@ -1,1 +1,13 @@
 .title-name-box{max-width:540px;margin:0 0 14px}.title-name-box label,.room-panel>label{display:block;font-weight:700}.title-name-box input,.room-panel input,.room-panel select{width:100%;margin-top:6px}.room-panel{max-width:560px}.room-panel hr{border:0;border-top:1px solid var(--line);margin:18px 0}.room-code{font-size:1.6rem;font-weight:900;letter-spacing:.08em;color:var(--accent)}.room-player-row{padding:7px 0;border-bottom:1px dotted var(--line)}.room-status{min-height:1.5em}.room-actions{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}.net-card{cursor:pointer}.net-card.disabled{opacity:.55}.net-prompt{margin:8px 0}.net-hidden{background:var(--card-back);color:#fff}.net-select{outline:3px solid var(--accent)}
+.stat-boosted{color:var(--ok)!important}
+.shatter-layer{position:fixed;inset:0;pointer-events:none;z-index:120;display:flex;align-items:center;justify-content:center}
+.shatter-burst{position:relative;min-width:170px;padding:14px 20px;text-align:center;border:2px solid var(--danger);border-radius:10px;background:color-mix(in srgb,var(--panel) 86%,var(--danger));color:var(--danger);font-weight:900;animation:shatter-card .72s ease-out forwards;box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 30%,transparent),0 0 28px color-mix(in srgb,var(--danger) 55%,transparent)}
+.shatter-burst::before,.shatter-burst::after{content:"✦";position:absolute;color:var(--gold);font-size:1.6rem;animation:shatter-spark .72s ease-out forwards}
+.shatter-burst::before{left:-22px;top:-18px}.shatter-burst::after{right:-22px;bottom:-18px}
+@keyframes shatter-card{0%{opacity:1;transform:scale(1) rotate(0)}35%{opacity:1;transform:scale(1.08) rotate(-3deg)}100%{opacity:0;transform:scale(.35) rotate(12deg);filter:blur(3px)} }
+@keyframes shatter-spark{0%{opacity:1;transform:scale(.5) translate(0,0)}100%{opacity:0;transform:scale(1.4) translate(28px,-24px)} }
+.move-layer{position:fixed;inset:0;pointer-events:none;z-index:121;display:flex;align-items:center;justify-content:center}
+.move-burst{padding:12px 18px;border:2px solid var(--teal);border-radius:10px;background:color-mix(in srgb,var(--panel) 88%,var(--teal));color:var(--teal);font-weight:900;animation:card-move .65s ease-out forwards;box-shadow:0 0 22px color-mix(in srgb,var(--teal) 45%,transparent)}
+@keyframes card-move{0%{opacity:0;transform:translateY(35px) scale(.8)}25%{opacity:1;transform:translateY(0) scale(1.05)}100%{opacity:0;transform:translateY(-28px) scale(.72)} }
+.attack-lunge{animation:attack-lunge .42s cubic-bezier(.2,.8,.2,1)}
+@keyframes attack-lunge{0%{transform:translateX(0)}38%{transform:translateX(32px) scale(1.06)}100%{transform:translateX(0)} }

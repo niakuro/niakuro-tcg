@@ -21,6 +21,7 @@ namespace Niakuro.Tcg.Core
         // 背水の陣の発動待ちプレイヤー。いる間は他の行動ができない（必須発動）。
         public int? PendingHaisuiPlayer { get; private set; }
         private int? _haisuiActivatedPlayerThisTurn;
+        private bool _haisuiPushBackSelectedThisTurn;
 
         // 「裏向きの手札を選んで捨てる」効果の選択待ち。
         // PendingDiscardByPlayer が選ぶ側、PendingDiscardTargetPlayer が捨てられる側。
@@ -175,7 +176,10 @@ namespace Niakuro.Tcg.Core
             var remaining = Gauge.RemainingFor(playerIndex);
             if (remaining < GameConstants.HaisuiRemaining)
                 Gauge.PushBack(GameConstants.HaisuiRemaining - remaining, playerIndex);
+            if (_haisuiPushBackSelectedThisTurn)
+                Gauge.PushBack(GameConstants.HaisuiPushBack, playerIndex);
             _haisuiActivatedPlayerThisTurn = null;
+            _haisuiPushBackSelectedThisTurn = false;
         }
 
         public bool DiscardFromHand(Guid instanceId)
@@ -998,10 +1002,7 @@ namespace Niakuro.Tcg.Core
             switch (action)
             {
                 case HaisuiAction.PushBack:
-                    Gauge.PushBack(GameConstants.HaisuiPushBack, playerIndex);
-                    // 発動条件（残り5以下）からは通常ここで決着しないが、
-                    // 万一ゲージが端まで届いた場合の勝者は押し戻した側。
-                    if (Gauge.IsFinished) WinnerIndex = playerIndex;
+                    _haisuiPushBackSelectedThisTurn = true;
                     break;
                 case HaisuiAction.DrawCards:
                     DrawCardsForEffect(playerIndex, GameConstants.HaisuiDraw);
