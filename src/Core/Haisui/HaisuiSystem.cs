@@ -8,7 +8,7 @@ namespace Niakuro.Tcg.Core
 {
     public enum HaisuiAction
     {
-        PushBack,     // ゲージを3押し戻す
+        PushBack,     // ゲージをさらに5押し戻す（発動ターン終了時の押し戻しとは別）
         DrawCards,    // 4枚ドロー
         NextTurnPoints, // 次の自分のターンのポイント +3
     }

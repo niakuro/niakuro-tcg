@@ -12,7 +12,7 @@ namespace Niakuro.Tcg.Core
         public const int HaisuiRemaining = 5;
 
         // 背水の陣の効果量。
-        public const int HaisuiPushBack = 3;
+        public const int HaisuiPushBack = 5;
         public const int HaisuiDraw = 4;
         public const int HaisuiPointBonus = 3;
 
