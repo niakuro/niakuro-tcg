@@ -542,10 +542,11 @@ function showShatter(name){
 var layer=document.createElement("div");layer.className="shatter-layer";layer.innerHTML='<div class="shatter-burst">'+esc(name)+'<br><small>破壊</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},1200);
 }
 function showCardMove(name,label){var layer=document.createElement("div");layer.className="move-layer";layer.innerHTML='<div class="move-burst">'+esc(name)+'<br><small>'+esc(label)+'</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},1000);}
+function triggerLocalAttack(uid){recentLocalAttacks[uid]=true;setTimeout(function(){delete recentLocalAttacks[uid];},1000);}
 function detectLocalDestroyed(){
 if(!S)return;
-var current={};S.players.forEach(function(p){p.field.forEach(function(u){current[u.uid]=defOf(u).name;});p.hand.forEach(function(c){current[c.uid]=defOf(c).name;});});
-Object.keys(lastLocalUnits).forEach(function(uid){if(!current[uid])showShatter(lastLocalUnits[uid]);});
+var current={},graves={};S.players.forEach(function(p){p.field.forEach(function(u){current[u.uid]=defOf(u).name;});p.hand.forEach(function(c){current[c.uid]=defOf(c).name;});p.grave.forEach(function(c){graves[c.uid]=true;});});
+Object.keys(lastLocalUnits).forEach(function(uid){if(!current[uid]&&graves[uid])showShatter(lastLocalUnits[uid]);});
 lastLocalUnits=current;
 }
 function detectLocalTransitions(){
@@ -1112,6 +1113,7 @@ refreshAuras(); validatePending();
 }
 function resolveFaceAttack(attacker){
 attacker.attacksUsed++; S.stats.attacks++;
+triggerLocalAttack(attacker.uid);
 var atk=atkWhenAttacking(attacker);
 log(S.active, defOf(attacker).name+" が相手プレイヤーを攻撃（実効攻撃力"+atk+"）");
 pushGauge(atk, 1-S.active, {pierce:piercesHaisui(attacker), fromAttack:true});
@@ -1120,6 +1122,7 @@ S.selected=null; S.abilityMenu=false; render();
 }
 function resolveUnitAttack(attacker, defender){
 attacker.attacksUsed++; S.stats.attacks++;
+triggerLocalAttack(attacker.uid);
 var dmgV=battleImmune(defender)?0:atkWhenAttacking(attacker);
 var capV=battleCapOf(defender); if(capV>0) dmgV=Math.min(dmgV,capV);
 var dmgA=battleImmune(attacker)?0:counterAtk(defender);
