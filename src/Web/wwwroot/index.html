@@ -535,7 +535,7 @@ function buildDeck(recipe){ var d=[]; recipe.forEach(function(r){ for(var i=0;i<
 function mkPlayer(idx, deckRef){ var def=resolveDeckDef(deckRef); return {idx:idx, deckDef:def, deck:buildDeck(def.recipe), hand:[], grave:[], field:[], base:2, carry:0, avail:0, turnMax:0, pendingBonus:0, firstTurn:true, mulliganUsed:false, effectDraws:0};}
 function mkUnit(card, owner, turn){ return {uid:card.uid, card:card, cardId:card.cardId, owner:owner, damage:0, atkBuff:0, hpRed:0, hpBuff:0, auraAtk:0, auraHp:0, auraHaste:false, scale:0, attacksUsed:0, abilityUsed:false, summoned:turn, haste:false, destroyAfter:false, grantedGuard:false, copiedDef:null};}
 
-var S=null, CPU_ACT=false, lastLocalHands=null, lastLocalGraves=null, recentLocalAttacks={};
+var S=null, CPU_ACT=false, lastLocalHands=null, lastLocalGraves=null, lastLocalAttacks={}, recentLocalAttacks={};
 var lastLocalUnits={};
 function showShatter(name){
 var layer=document.createElement("div");layer.className="shatter-layer";layer.innerHTML='<div class="shatter-burst">'+esc(name)+'<br><small>破壊</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},800);
