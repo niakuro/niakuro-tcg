@@ -538,9 +538,9 @@ function mkUnit(card, owner, turn){ return {uid:card.uid, card:card, cardId:card
 var S=null, CPU_ACT=false, lastLocalHands=null, lastLocalGraves=null, lastLocalAttacks={}, recentLocalAttacks={};
 var lastLocalUnits={};
 function showShatter(name){
-var layer=document.createElement("div");layer.className="shatter-layer";layer.innerHTML='<div class="shatter-burst">'+esc(name)+'<br><small>破壊</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},800);
+var layer=document.createElement("div");layer.className="shatter-layer";layer.innerHTML='<div class="shatter-burst">'+esc(name)+'<br><small>破壊</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},1200);
 }
-function showCardMove(name,label){var layer=document.createElement("div");layer.className="move-layer";layer.innerHTML='<div class="move-burst">'+esc(name)+'<br><small>'+esc(label)+'</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},700);}
+function showCardMove(name,label){var layer=document.createElement("div");layer.className="move-layer";layer.innerHTML='<div class="move-burst">'+esc(name)+'<br><small>'+esc(label)+'</small></div>';document.body.appendChild(layer);setTimeout(function(){layer.remove();},1000);}
 function detectLocalDestroyed(){
 if(!S)return;
 var current={};S.players.forEach(function(p){p.field.forEach(function(u){current[u.uid]=defOf(u).name;});});
