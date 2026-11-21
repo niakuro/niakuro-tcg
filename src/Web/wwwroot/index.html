@@ -545,7 +545,7 @@ function showCardMove(name,label){var layer=document.createElement("div");layer.
 function triggerLocalAttack(uid){recentLocalAttacks[uid]=true;setTimeout(function(){delete recentLocalAttacks[uid];},1000);}
 function detectLocalDestroyed(){
 if(!S)return;
-var current={},graves={};S.players.forEach(function(p){p.field.forEach(function(u){current[u.uid]=defOf(u).name;});p.hand.forEach(function(c){current[c.uid]=defOf(c).name;});p.grave.forEach(function(c){graves[c.uid]=true;});});
+var current={},graves={};S.players.forEach(function(p){p.field.forEach(function(u){current[u.uid]=defOf(u).name;});p.grave.forEach(function(c){graves[c.uid]=true;});});
 Object.keys(lastLocalUnits).forEach(function(uid){if(!current[uid]&&graves[uid])showShatter(lastLocalUnits[uid]);});
 lastLocalUnits=current;
 }
